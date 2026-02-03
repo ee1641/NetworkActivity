@@ -1,0 +1,32 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org">
+<head>
+    <meta charset="UTF-8" />
+    <title>Test Entities</title>
+    <style>
+        body { font-family: Arial, sans-serif; padding: 20px; }
+        table { border-collapse: collapse; width: 100%; }
+        th, td { border: 1px solid #ddd; padding: 8px; text-align: left; }
+        th { background: #f4f4f4; }
+    </style>
+</head>
+<body>
+<h1>Test Entities</h1>
+<a href="/api/tests">View JSON</a>
+<table>
+    <thead>
+    <tr>
+        <th>ID</th><th>Name</th><th>Description</th><th>Created At</th>
+    </tr>
+    </thead>
+    <tbody>
+    <tr th:each="t : ${tests}">
+        <td th:text="${t.id}">1</td>
+        <td th:text="${t.name}">Name</td>
+        <td th:text="${t.description}">Desc</td>
+        <td th:text="${t.createdAt}">2025-01-01T12:00</td>
+    </tr>
+    </tbody>
+</table>
+</body>
+</html>
