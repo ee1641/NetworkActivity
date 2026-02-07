@@ -1,6 +1,7 @@
 import { useState, useEffect } from "react";
 import { supabase } from "../utils/supabase";
 import NavigationBar from "./NavigationBar";
+import DashboardKPIs from "./DashboardKPIs";
 
 export default function NetworkActivityPage() {
   const [posts, setPosts] = useState([]);
@@ -31,6 +32,15 @@ export default function NetworkActivityPage() {
       <NavigationBar />
 
       <div className="max-w-7xl mx-auto p-8">
+        {/* KPI Dashboard Section */}
+        <div className="mb-12">
+          <h2 className="text-2xl font-bold text-white mb-6">
+            Network Overview
+          </h2>
+          <DashboardKPIs />
+        </div>
+
+        {/* Posts Section */}
         <h2 className="text-3xl font-bold mb-8 bg-clip-text text-transparent bg-gradient-to-r from-blue-400 to-purple-400">
           Recent Posts
         </h2>
