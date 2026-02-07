@@ -7,9 +7,22 @@ export default function NetworkActivityPage() {
   const [posts, setPosts] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
+  const [timeRange, setTimeRange] = useState("all");
 
   useEffect(() => {
-    fetch("http://localhost:8080/api/posts")
+    fetchPosts(timeRange);
+  }, [timeRange]);
+
+  const fetchPosts = (range) => {
+    setLoading(true);
+    setError(null);
+
+    const url =
+      range === "all"
+        ? "http://localhost:8080/api/posts"
+        : `http://localhost:8080/api/posts?range=${range}`;
+
+    fetch(url)
       .then((response) => {
         if (!response.ok) {
           throw new Error("Network response was not ok");
@@ -25,7 +38,11 @@ export default function NetworkActivityPage() {
         setError(err.message);
         setLoading(false);
       });
-  }, []);
+  };
+
+  const handleRefresh = () => {
+    fetchPosts(timeRange);
+  };
 
   return (
     <div className="min-h-screen bg-slate-900 text-white">
@@ -41,9 +58,45 @@ export default function NetworkActivityPage() {
         </div>
 
         {/* Posts Section */}
-        <h2 className="text-3xl font-bold mb-8 bg-clip-text text-transparent bg-gradient-to-r from-blue-400 to-purple-400">
-          Recent Posts
-        </h2>
+        <div className="flex items-center justify-between mb-8">
+          <h2 className="text-3xl font-bold bg-clip-text text-transparent bg-gradient-to-r from-blue-400 to-purple-400">
+            Recent Posts
+          </h2>
+
+          <div className="flex items-center gap-3">
+            {/* Refresh Button */}
+            <button
+              onClick={handleRefresh}
+              disabled={loading}
+              className="px-4 py-2 bg-slate-800/50 hover:bg-slate-700 rounded-lg border border-slate-600/50 hover:border-blue-500/50 transition-all duration-200 text-sm font-medium text-slate-300 hover:text-white disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2"
+            >
+              <span className={loading ? "animate-spin" : ""}>🔄</span>
+              Refresh
+            </button>
+
+            {/* Time Range Filter Buttons */}
+            <div className="flex gap-2">
+              {[
+                { value: "24h", label: "Last 24h" },
+                { value: "7d", label: "Last 7 days" },
+                { value: "30d", label: "Last 30 days" },
+                { value: "all", label: "All Time" },
+              ].map((filter) => (
+                <button
+                  key={filter.value}
+                  onClick={() => setTimeRange(filter.value)}
+                  className={`px-4 py-2 rounded-lg text-sm font-medium transition-all ${
+                    timeRange === filter.value
+                      ? "bg-blue-500 text-white shadow-lg shadow-blue-500/30"
+                      : "bg-slate-800/50 text-slate-300 hover:bg-slate-700 border border-slate-600/50"
+                  }`}
+                >
+                  {filter.label}
+                </button>
+              ))}
+            </div>
+          </div>
+        </div>
 
         {loading && (
           <div className="text-center text-blue-400 text-xl animate-pulse">
@@ -52,12 +105,25 @@ export default function NetworkActivityPage() {
         )}
 
         {error && (
-          <div className="bg-red-900/20 border border-red-500/50 text-red-400 p-4 rounded-lg mb-8">
-            <h3 className="font-bold mb-2">Error loading posts</h3>
-            <p>{error}</p>
-            <p className="text-sm mt-2 opacity-75">
-              Make sure the backend is running on port 8080
+          <div className="bg-red-900/20 border border-red-500/50 text-red-400 p-6 rounded-lg text-center">
+            Error: {error}
+          </div>
+        )}
+
+        {!loading && !error && posts.length === 0 && (
+          <div className="text-center py-16">
+            <div className="text-6xl mb-4">📭</div>
+            <p className="text-slate-400 text-lg mb-2">
+              No posts found for this time range
             </p>
+            {timeRange !== "all" && (
+              <button
+                onClick={() => setTimeRange("all")}
+                className="mt-4 text-blue-400 hover:text-blue-300 hover:underline transition-colors"
+              >
+                View all posts
+              </button>
+            )}
           </div>
         )}
 
