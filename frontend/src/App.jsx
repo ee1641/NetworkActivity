@@ -2,7 +2,8 @@ import { useState, useEffect } from 'react'
 import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-dom'
 import { supabase } from './utils/supabase'
 import LoginPage from './components/LoginPage'
-import NetworkActivityPage from './components/NetworkActivityPage'
+import Dashboard from './components/Dashboard'
+import UserSettings from './components/UserSettings'
 import UpdatePasswordPage from './components/UpdatePasswordPage'
 import './index.css'
 
@@ -42,7 +43,11 @@ function App() {
         />
         <Route
           path="/dashboard"
-          element={session ? <NetworkActivityPage /> : <Navigate to="/" replace />}
+          element={session ? <Dashboard /> : <Navigate to="/" replace />}
+        />
+        <Route
+          path="/settings"
+          element={session ? <UserSettings /> : <Navigate to="/" replace />}
         />
         <Route
           path="/update-password"
