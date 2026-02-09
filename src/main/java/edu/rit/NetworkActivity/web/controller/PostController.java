@@ -26,6 +26,7 @@ public class PostController {
 
         OffsetDateTime since = calculateSinceDate(range);
         return postRepository.findByCreatedAtAfterOrderByCreatedAtDesc(since);
+    }
 
     private OffsetDateTime calculateSinceDate(String range) {
         OffsetDateTime now = OffsetDateTime.now();
