@@ -2,6 +2,7 @@ package edu.rit.NetworkActivity.service;
 
 import edu.rit.NetworkActivity.data.entity.MetricSample;
 import edu.rit.NetworkActivity.data.repository.MetricSampleRepository;
+import edu.rit.NetworkActivity.logging.LogEvents;
 import edu.rit.NetworkActivity.logging.LogStrategy;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -24,7 +25,7 @@ public class MetricService {
     public OffsetDateTime sinceFromRange(String range) {
         OffsetDateTime now = OffsetDateTime.now();
         if (range == null || range.equals("all")) {
-            LogStrategy.info(log, "metric.range.resolved", "inputRange", range, "resolvedRange", "all");
+            LogStrategy.info(log, LogEvents.METRIC_RANGE_RESOLVED, "inputRange", range, "resolvedRange", "all");
             return OffsetDateTime.MIN;
         }
 
@@ -34,14 +35,14 @@ public class MetricService {
             case "30d" -> now.minusDays(30);
             default -> OffsetDateTime.MIN;
         };
-        LogStrategy.info(log, "metric.range.resolved", "inputRange", range, "resolvedRange", since == OffsetDateTime.MIN ? "all" : range);
+        LogStrategy.info(log, LogEvents.METRIC_RANGE_RESOLVED, "inputRange", range, "resolvedRange", since == OffsetDateTime.MIN ? "all" : range);
         return since;
     }
 
     public List<MetricSample> getTimeSeries(String metricName, String range) {
         OffsetDateTime since = sinceFromRange(range);
         List<MetricSample> metrics = repo.findByMetricNameAndTsAfterOrderByTsAsc(metricName, since);
-        LogStrategy.info(log, "metric.timeseries.fetched", "metric", metricName, "range", range, "count", metrics.size());
+        LogStrategy.info(log, LogEvents.METRIC_TIMESERIES_FETCHED, "metric", metricName, "range", range, "count", metrics.size());
         return metrics;
     }
 
@@ -72,7 +73,7 @@ public class MetricService {
         out.put("activeWallets", activeWallets);
         out.put("successRate", successRate);
 
-        LogStrategy.info(log, "metric.summary.fetched", "range", out.get("range"), "sampleCount", samples.size());
+        LogStrategy.info(log, LogEvents.METRIC_SUMMARY_FETCHED, "range", out.get("range"), "sampleCount", samples.size());
         return out;
     }
 

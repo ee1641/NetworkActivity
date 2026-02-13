@@ -1,6 +1,7 @@
 package edu.rit.NetworkActivity.web.controller;
 
 import edu.rit.NetworkActivity.data.entity.MetricSample;
+import edu.rit.NetworkActivity.logging.LogEvents;
 import edu.rit.NetworkActivity.logging.LogStrategy;
 import edu.rit.NetworkActivity.service.MetricService;
 import org.slf4j.Logger;
@@ -25,7 +26,7 @@ public class MetricsController {
     @GetMapping("/summary")
     public Map<String, Object> summary(@RequestParam(required = false) String range) {
         Map<String, Object> summary = metricService.getSummary(range);
-        LogStrategy.info(log, "api.metrics.summary", "range", range, "txCount", summary.get("txCount"));
+        LogStrategy.info(log, LogEvents.API_METRICS_SUMMARY, "range", range, "txCount", summary.get("txCount"));
         return summary;
     }
 
@@ -35,7 +36,7 @@ public class MetricsController {
             @RequestParam(required = false) String range
     ) {
         List<MetricSample> series = metricService.getTimeSeries(metric, range);
-        LogStrategy.info(log, "api.metrics.timeseries", "metric", metric, "range", range, "count", series.size());
+        LogStrategy.info(log, LogEvents.API_METRICS_TIMESERIES, "metric", metric, "range", range, "count", series.size());
         return series;
     }
 }
