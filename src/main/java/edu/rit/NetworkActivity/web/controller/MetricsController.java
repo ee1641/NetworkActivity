@@ -1,7 +1,10 @@
 package edu.rit.NetworkActivity.web.controller;
 
 import edu.rit.NetworkActivity.data.entity.MetricSample;
+import edu.rit.NetworkActivity.logging.LogStrategy;
 import edu.rit.NetworkActivity.service.MetricService;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
@@ -12,6 +15,7 @@ import java.util.Map;
 @CrossOrigin(origins = "*")
 public class MetricsController {
 
+    private static final Logger log = LoggerFactory.getLogger(MetricsController.class);
     private final MetricService metricService;
 
     public MetricsController(MetricService metricService) {
@@ -20,7 +24,9 @@ public class MetricsController {
 
     @GetMapping("/summary")
     public Map<String, Object> summary(@RequestParam(required = false) String range) {
-        return metricService.getSummary(range);
+        Map<String, Object> summary = metricService.getSummary(range);
+        LogStrategy.info(log, "api.metrics.summary", "range", range, "txCount", summary.get("txCount"));
+        return summary;
     }
 
     @GetMapping("/timeseries")
@@ -28,6 +34,8 @@ public class MetricsController {
             @RequestParam String metric,
             @RequestParam(required = false) String range
     ) {
-        return metricService.getTimeSeries(metric, range);
+        List<MetricSample> series = metricService.getTimeSeries(metric, range);
+        LogStrategy.info(log, "api.metrics.timeseries", "metric", metric, "range", range, "count", series.size());
+        return series;
     }
 }
