@@ -8,6 +8,7 @@ import java.util.Map;
 public class VeChainThorClient {
 
     //Placeholder
+    //http://localhost:8080/api/vechain/status
     public Map<String, Object> getBestBlock() {
         return Map.of(
                 "status", "SDK not connected yet",
