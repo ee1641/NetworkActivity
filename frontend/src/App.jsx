@@ -5,6 +5,11 @@ import LoginPage from './components/LoginPage'
 import Dashboard from './components/Dashboard'
 import UserSettings from './components/UserSettings'
 import UpdatePasswordPage from './components/UpdatePasswordPage'
+import BlockchainExplorer from './components/BlockchainExplorer'
+import WalletClusteringAnalysis from './components/WalletClusteringAnalysis'
+import DataReportingInterface from './components/DataReportingInterface'
+import LabelManagement from './components/LabelManagement'
+import TopHotspots from './components/TopHotspots'
 import './index.css'
 
 function App() {
@@ -48,6 +53,26 @@ function App() {
         <Route
           path="/settings"
           element={session ? <UserSettings /> : <Navigate to="/" replace />}
+        />
+        <Route
+          path="/explorer"
+          element={session ? <BlockchainExplorer /> : <Navigate to="/" replace />}
+        />
+        <Route
+          path="/clusters"
+          element={session ? <WalletClusteringAnalysis /> : <Navigate to="/" replace />}
+        />
+        <Route
+          path="/reports"
+          element={session ? <DataReportingInterface /> : <Navigate to="/" replace />}
+        />
+        <Route
+          path="/labels"
+          element={session ? <LabelManagement /> : <Navigate to="/" replace />}
+        />
+        <Route
+          path="/hotspots"
+          element={session ? <TopHotspots /> : <Navigate to="/" replace />}
         />
         <Route
           path="/update-password"

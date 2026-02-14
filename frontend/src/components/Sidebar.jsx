@@ -21,6 +21,17 @@ const Sidebar = () => {
           <span>Dashboard</span>
         </a>
         <a
+          href="/explorer"
+          className={`flex items-center space-x-3 px-3 py-2 ${
+            isActive("/explorer")
+              ? "bg-gray-900 text-white"
+              : "text-gray-700 hover:bg-gray-100"
+          }`}
+        >
+          <i className="fas fa-search w-5" />
+          <span>Explorer</span>
+        </a>
+        <a
           href="#"
           className="flex items-center space-x-3 px-3 py-2 text-gray-700 hover:bg-gray-100"
         >
@@ -35,11 +46,48 @@ const Sidebar = () => {
           <span>Tokens</span>
         </a>
         <a
-          href="#"
-          className="flex items-center space-x-3 px-3 py-2 text-gray-700 hover:bg-gray-100"
+          href="/hotspots"
+          className={`flex items-center space-x-3 px-3 py-2 ${
+            isActive("/hotspots")
+              ? "bg-gray-900 text-white"
+              : "text-gray-700 hover:bg-gray-100"
+          }`}
+        >
+          <i className="fas fa-fire w-5" />
+          <span>Top Hotspots</span>
+        </a>
+        <a
+          href="/clusters"
+          className={`flex items-center space-x-3 px-3 py-2 ${
+            isActive("/clusters")
+              ? "bg-gray-900 text-white"
+              : "text-gray-700 hover:bg-gray-100"
+          }`}
         >
           <i className="fas fa-project-diagram w-5" />
           <span>Clusters</span>
+        </a>
+        <a
+          href="/reports"
+          className={`flex items-center space-x-3 px-3 py-2 ${
+            isActive("/reports")
+              ? "bg-gray-900 text-white"
+              : "text-gray-700 hover:bg-gray-100"
+          }`}
+        >
+          <i className="fas fa-file-alt w-5" />
+          <span>Reports</span>
+        </a>
+        <a
+          href="/labels"
+          className={`flex items-center space-x-3 px-3 py-2 ${
+            isActive("/labels")
+              ? "bg-gray-900 text-white"
+              : "text-gray-700 hover:bg-gray-100"
+          }`}
+        >
+          <i className="fas fa-tags w-5" />
+          <span>Labels</span>
         </a>
         <a
           href="#"
