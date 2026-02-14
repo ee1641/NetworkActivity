@@ -5,6 +5,8 @@ import org.springframework.web.bind.annotation.*;
 
 import java.util.Map;
 
+//http://localhost:8080/api/vechain/status
+
 @RestController
 @RequestMapping("/api/vechain")
 @CrossOrigin(origins = "*")

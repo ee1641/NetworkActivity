@@ -69,6 +69,10 @@ This project is a full-stack application with a Spring Boot backend and a React 
     mvnw.cmd spring-boot:run
     ```
     The backend will start on `http://localhost:8080`.
+    ```
+    For the api:
+        cd thor-sdk
+        npm run dev
 
 ### 2. Frontend Setup
 
