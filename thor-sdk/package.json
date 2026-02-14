@@ -1,0 +1,13 @@
+{
+  "name": "thor-sdk",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "dev": "node server.js"
+  },
+  "dependencies": {
+    "@vechain/sdk-core": "^2.0.4",
+    "@vechain/sdk-network": "^2.0.4",
+    "express": "^4.19.2"
+  }
+}
