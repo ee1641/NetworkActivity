@@ -35,14 +35,28 @@ public class MetricService {
             case "30d" -> now.minusDays(30);
             default -> OffsetDateTime.MIN;
         };
-        LogStrategy.info(log, LogEvents.METRIC_RANGE_RESOLVED, "inputRange", range, "resolvedRange", since == OffsetDateTime.MIN ? "all" : range);
+        LogStrategy.info(log, LogEvents.METRIC_RANGE_RESOLVED, "inputRange", range, "resolvedRange",
+                since == OffsetDateTime.MIN ? "all" : range);
         return since;
     }
 
     public List<MetricSample> getTimeSeries(String metricName, String range) {
         OffsetDateTime since = sinceFromRange(range);
         List<MetricSample> metrics = repo.findByMetricNameAndTsAfterOrderByTsAsc(metricName, since);
-        LogStrategy.info(log, LogEvents.METRIC_TIMESERIES_FETCHED, "metric", metricName, "range", range, "count", metrics.size());
+        LogStrategy.info(log, LogEvents.METRIC_TIMESERIES_FETCHED, "metric", metricName, "range", range, "count",
+                metrics.size());
+        return metrics;
+    }
+
+    public List<MetricSample> getReport(String metricName, OffsetDateTime start, OffsetDateTime end) {
+        List<MetricSample> metrics;
+        if (metricName == null || metricName.equalsIgnoreCase("all")) {
+            metrics = repo.findByTsBetweenOrderByTsAsc(start, end);
+        } else {
+            metrics = repo.findByMetricNameAndTsBetweenOrderByTsAsc(metricName, start, end);
+        }
+        LogStrategy.info(log, LogEvents.METRIC_REPORT_GENERATED, "metric", metricName, "start", start, "end", end,
+                "count", metrics.size());
         return metrics;
     }
 
@@ -57,8 +71,8 @@ public class MetricService {
         OffsetDateTime since = sinceFromRange(range);
         List<MetricSample> samples = repo.findByTsAfterOrderByTsAsc(since);
 
-        Map<String, List<MetricSample>> byName =
-                samples.stream().collect(Collectors.groupingBy(MetricSample::getMetricName));
+        Map<String, List<MetricSample>> byName = samples.stream()
+                .collect(Collectors.groupingBy(MetricSample::getMetricName));
 
         double txCount = sum(byName.get("tx_count"));
         double txVolume = sum(byName.get("tx_volume"));
@@ -73,17 +87,20 @@ public class MetricService {
         out.put("activeWallets", activeWallets);
         out.put("successRate", successRate);
 
-        LogStrategy.info(log, LogEvents.METRIC_SUMMARY_FETCHED, "range", out.get("range"), "sampleCount", samples.size());
+        LogStrategy.info(log, LogEvents.METRIC_SUMMARY_FETCHED, "range", out.get("range"), "sampleCount",
+                samples.size());
         return out;
     }
 
     private double sum(List<MetricSample> list) {
-        if (list == null) return 0;
+        if (list == null)
+            return 0;
         return list.stream().mapToDouble(MetricSample::getValue).sum();
     }
 
     private Double latest(List<MetricSample> list) {
-        if (list == null || list.isEmpty()) return null;
+        if (list == null || list.isEmpty())
+            return null;
         return list.get(list.size() - 1).getValue();
     }
 }

@@ -8,6 +8,7 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.web.bind.annotation.*;
 
+import java.time.OffsetDateTime;
 import java.util.List;
 import java.util.Map;
 
@@ -33,10 +34,22 @@ public class MetricsController {
     @GetMapping("/timeseries")
     public List<MetricSample> timeseries(
             @RequestParam String metric,
-            @RequestParam(required = false) String range
-    ) {
+            @RequestParam(required = false) String range) {
         List<MetricSample> series = metricService.getTimeSeries(metric, range);
-        LogStrategy.info(log, LogEvents.API_METRICS_TIMESERIES, "metric", metric, "range", range, "count", series.size());
+        LogStrategy.info(log, LogEvents.API_METRICS_TIMESERIES, "metric", metric, "range", range, "count",
+                series.size());
         return series;
+    }
+
+    @GetMapping("/report")
+    public List<MetricSample> report(
+            @RequestParam(required = false) String metric,
+            @RequestParam(required = false) String start,
+            @RequestParam(required = false) String end) {
+        // Default to last 24h if not provided
+        OffsetDateTime endDate = (end != null) ? OffsetDateTime.parse(end) : OffsetDateTime.now();
+        OffsetDateTime startDate = (start != null) ? OffsetDateTime.parse(start) : endDate.minusHours(24);
+
+        return metricService.getReport(metric, startDate, endDate);
     }
 }

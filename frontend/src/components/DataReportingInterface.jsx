@@ -1,7 +1,64 @@
-import React from "react";
+import React, { useState } from "react";
 import Sidebar from "./Sidebar";
 
 const DataReportingInterface = () => {
+  const [reportType, setReportType] = useState("tx_count"); // Default to Transaction Count
+  const [startDate, setStartDate] = useState(
+    new Date(Date.now() - 7 * 24 * 60 * 60 * 1000).toISOString().split("T")[0]
+  );
+  const [endDate, setEndDate] = useState(
+    new Date().toISOString().split("T")[0]
+  );
+  const [loading, setLoading] = useState(false);
+  const [reportData, setReportData] = useState(null);
+
+  const generateReport = async () => {
+    setLoading(true);
+    try {
+      const metricParam = reportType === "all" ? "all" : reportType;
+
+      const startDateTime = `${startDate}T00:00:00Z`;
+      const endDateTime = `${endDate}T23:59:59Z`;
+
+      const response = await fetch(
+        `http://localhost:8080/api/metrics/report?metric=${metricParam}&start=${startDateTime}&end=${endDateTime}`
+      );
+      if (!response.ok) throw new Error("Failed to fetch report");
+      const data = await response.json();
+      setReportData(data);
+    } catch (error) {
+      console.error("Error generating report:", error);
+      alert("Error generating report. Ensure backend is running.");
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const downloadCSV = () => {
+    if (!reportData || reportData.length === 0) return;
+
+    const headers = ["ID", "Timestamp", "Metric Name", "Value", "Source"];
+    const rows = reportData.map((item) => [
+      item.id,
+      item.ts,
+      item.metricName,
+      item.value,
+      item.source,
+    ]);
+
+    const csvContent =
+      "data:text/csv;charset=utf-8," +
+      [headers.join(","), ...rows.map((row) => row.join(","))].join("\n");
+
+    const encodedUri = encodeURI(csvContent);
+    const link = document.createElement("a");
+    link.setAttribute("href", encodedUri);
+    link.setAttribute("download", `report_${reportType}_${startDate}_${endDate}.csv`);
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+  };
+
   return (
     <div className="min-h-screen bg-gray-50 flex flex-col">
       {/* Top Navigation Bar */}
@@ -18,19 +75,7 @@ const DataReportingInterface = () => {
 
           <div className="flex items-center space-x-3 md:space-x-6">
             <div className="flex items-center space-x-2 text-xs text-gray-600">
-              <div className="w-2 h-2 bg-gray-400 rounded-full" />
-              <span className="hidden sm:inline">Auto-refresh: 30s</span>
-            </div>
-
-            <button className="w-8 h-8 flex items-center justify-center text-gray-600 hover:bg-gray-100">
-              <i className="fas fa-cog" />
-            </button>
-
-            <div className="flex items-center space-x-2">
-              <div className="w-8 h-8 bg-gray-300 rounded-full" />
-              <span className="text-sm text-gray-700 hidden md:block">
-                User Name
-              </span>
+              <span className="hidden sm:inline">Status: {loading ? "Fetching..." : "Ready"}</span>
             </div>
           </div>
         </div>
@@ -62,51 +107,56 @@ const DataReportingInterface = () => {
                   Report Type
                 </h2>
                 <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
-                  <label className="flex items-center space-x-3 p-4 border-2 border-gray-900 bg-gray-50 cursor-pointer">
+                  <label className={`flex items-center space-x-3 p-4 border-2 cursor-pointer ${reportType === 'tx_count' ? 'border-gray-900 bg-gray-50' : 'border-gray-200 hover:border-gray-400'}`}>
                     <input
                       type="radio"
                       name="reportType"
-                      defaultChecked
+                      checked={reportType === "tx_count"}
+                      onChange={() => setReportType("tx_count")}
                       className="w-4 h-4"
                     />
                     <div>
                       <div className="text-sm font-semibold text-gray-900">
-                        Transaction Aggregation
+                        Transactions
                       </div>
                       <div className="text-xs text-gray-600 mt-1">
-                        Summarize transaction data
+                        Transaction counts
                       </div>
                     </div>
                   </label>
 
-                  <label className="flex items-center space-x-3 p-4 border border-gray-300 hover:border-gray-400 cursor-pointer">
+                  <label className={`flex items-center space-x-3 p-4 border-2 cursor-pointer ${reportType === 'vtho_burn' ? 'border-gray-900 bg-gray-50' : 'border-gray-200 hover:border-gray-400'}`}>
                     <input
                       type="radio"
                       name="reportType"
+                      checked={reportType === "vtho_burn"}
+                      onChange={() => setReportType("vtho_burn")}
                       className="w-4 h-4"
                     />
                     <div>
                       <div className="text-sm font-semibold text-gray-900">
-                        Trend Analysis
+                        VTHO Burn
                       </div>
                       <div className="text-xs text-gray-600 mt-1">
-                        Analyze patterns over time
+                        Gas usage analysis
                       </div>
                     </div>
                   </label>
 
-                  <label className="flex items-center space-x-3 p-4 border border-gray-300 hover:border-gray-400 cursor-pointer">
+                  <label className={`flex items-center space-x-3 p-4 border-2 cursor-pointer ${reportType === 'all' ? 'border-gray-900 bg-gray-50' : 'border-gray-200 hover:border-gray-400'}`}>
                     <input
                       type="radio"
                       name="reportType"
+                      checked={reportType === "all"}
+                      onChange={() => setReportType("all")}
                       className="w-4 h-4"
                     />
                     <div>
                       <div className="text-sm font-semibold text-gray-900">
-                        Cluster Activity
+                        All Metrics
                       </div>
                       <div className="text-xs text-gray-600 mt-1">
-                        Monitor cluster behavior
+                        Complete dataset
                       </div>
                     </div>
                   </label>
@@ -130,8 +180,9 @@ const DataReportingInterface = () => {
                         <i className="fas fa-calendar text-gray-600 text-sm mr-2" />
                         <input
                           type="date"
+                          value={startDate}
+                          onChange={(e) => setStartDate(e.target.value)}
                           className="flex-1 text-sm text-gray-700 bg-transparent border-none outline-none"
-                          defaultValue="2024-01-01"
                         />
                       </div>
                     </div>
@@ -144,425 +195,100 @@ const DataReportingInterface = () => {
                         <i className="fas fa-calendar text-gray-600 text-sm mr-2" />
                         <input
                           type="date"
-                          className="flex-1 text-sm text-gray-700 bg-transparent border-none outline-none"
-                          defaultValue="2024-01-31"
-                        />
-                      </div>
-                    </div>
-                  </div>
-
-                  {/* Token Selection */}
-                  <div>
-                    <label className="block text-xs font-semibold text-gray-700 mb-2">
-                      Token Filter
-                    </label>
-                    <div className="flex items-center border border-gray-300 px-3 py-2 bg-white">
-                      <i className="fas fa-coins text-gray-600 text-sm mr-2" />
-                      <select className="flex-1 text-sm text-gray-700 bg-transparent border-none outline-none">
-                        <option>All Tokens</option>
-                        <option>ETH - Ethereum</option>
-                        <option>BTC - Bitcoin</option>
-                        <option>USDT - Tether</option>
-                        <option>USDC - USD Coin</option>
-                        <option>BNB - Binance Coin</option>
-                      </select>
-                    </div>
-                  </div>
-
-                  {/* Address Filter */}
-                  <div>
-                    <label className="block text-xs font-semibold text-gray-700 mb-2">
-                      Address Filter (Optional)
-                    </label>
-                    <div className="flex items-center border border-gray-300 px-3 py-2 bg-white">
-                      <i className="fas fa-wallet text-gray-600 text-sm mr-2" />
-                      <input
-                        type="text"
-                        placeholder="Enter wallet address or leave blank for all"
-                        className="flex-1 text-sm text-gray-700 bg-transparent border-none outline-none"
-                      />
-                    </div>
-                  </div>
-
-                  {/* Transaction Type */}
-                  <div>
-                    <label className="block text-xs font-semibold text-gray-700 mb-2">
-                      Transaction Type
-                    </label>
-                    <div className="flex items-center border border-gray-300 px-3 py-2 bg-white">
-                      <i className="fas fa-exchange-alt text-gray-600 text-sm mr-2" />
-                      <select className="flex-1 text-sm text-gray-700 bg-transparent border-none outline-none">
-                        <option>All Types</option>
-                        <option>Transfers</option>
-                        <option>Swaps</option>
-                        <option>Deposits</option>
-                        <option>Withdrawals</option>
-                      </select>
-                    </div>
-                  </div>
-
-                  {/* Value Range */}
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                    <div>
-                      <label className="block text-xs font-semibold text-gray-700 mb-2">
-                        Min Value (USD)
-                      </label>
-                      <div className="flex items-center border border-gray-300 px-3 py-2 bg-white">
-                        <i className="fas fa-dollar-sign text-gray-600 text-sm mr-2" />
-                        <input
-                          type="number"
-                          placeholder="0"
-                          className="flex-1 text-sm text-gray-700 bg-transparent border-none outline-none"
-                        />
-                      </div>
-                    </div>
-
-                    <div>
-                      <label className="block text-xs font-semibold text-gray-700 mb-2">
-                        Max Value (USD)
-                      </label>
-                      <div className="flex items-center border border-gray-300 px-3 py-2 bg-white">
-                        <i className="fas fa-dollar-sign text-gray-600 text-sm mr-2" />
-                        <input
-                          type="number"
-                          placeholder="No limit"
+                          value={endDate}
+                          onChange={(e) => setEndDate(e.target.value)}
                           className="flex-1 text-sm text-gray-700 bg-transparent border-none outline-none"
                         />
                       </div>
                     </div>
                   </div>
-                </div>
-              </div>
-
-              {/* Data Preview */}
-              <div className="bg-white border border-gray-300 p-5">
-                <div className="flex items-center justify-between mb-4">
-                  <h2 className="text-sm font-semibold text-gray-900">
-                    Data Preview
-                  </h2>
-                  <span className="text-xs text-gray-600">
-                    Sample structure based on selected parameters
-                  </span>
-                </div>
-
-                <div className="border border-gray-300 overflow-hidden">
-                  <div className="overflow-x-auto">
-                    <table className="w-full text-xs">
-                      <thead className="bg-gray-100 border-b border-gray-300">
-                        <tr>
-                          <th className="px-4 py-3 text-left font-semibold text-gray-900">
-                            Date
-                          </th>
-                          <th className="px-4 py-3 text-left font-semibold text-gray-900">
-                            Transaction ID
-                          </th>
-                          <th className="px-4 py-3 text-left font-semibold text-gray-900">
-                            Token
-                          </th>
-                          <th className="px-4 py-3 text-right font-semibold text-gray-900">
-                            Amount
-                          </th>
-                          <th className="px-4 py-3 text-right font-semibold text-gray-900">
-                            Value (USD)
-                          </th>
-                        </tr>
-                      </thead>
-                      <tbody className="divide-y divide-gray-200">
-                        <tr className="hover:bg-gray-50">
-                          <td className="px-4 py-3 text-gray-700">
-                            2024-01-15
-                          </td>
-                          <td className="px-4 py-3 text-gray-700">
-                            0x742d...3f8a
-                          </td>
-                          <td className="px-4 py-3 text-gray-700">ETH</td>
-                          <td className="px-4 py-3 text-right text-gray-700">
-                            125.50
-                          </td>
-                          <td className="px-4 py-3 text-right text-gray-700">
-                            $284,625.00
-                          </td>
-                        </tr>
-                        <tr className="hover:bg-gray-50">
-                          <td className="px-4 py-3 text-gray-700">
-                            2024-01-15
-                          </td>
-                          <td className="px-4 py-3 text-gray-700">
-                            0x9c1e...7b2d
-                          </td>
-                          <td className="px-4 py-3 text-gray-700">BTC</td>
-                          <td className="px-4 py-3 text-right text-gray-700">
-                            2.35
-                          </td>
-                          <td className="px-4 py-3 text-right text-gray-700">
-                            $98,750.00
-                          </td>
-                        </tr>
-                        <tr className="hover:bg-gray-50">
-                          <td className="px-4 py-3 text-gray-700">
-                            2024-01-14
-                          </td>
-                          <td className="px-4 py-3 text-gray-700">
-                            0x1a2b...4c5d
-                          </td>
-                          <td className="px-4 py-3 text-gray-700">USDT</td>
-                          <td className="px-4 py-3 text-right text-gray-700">
-                            50,000.00
-                          </td>
-                          <td className="px-4 py-3 text-right text-gray-700">
-                            $50,000.00
-                          </td>
-                        </tr>
-                        <tr className="hover:bg-gray-50">
-                          <td className="px-4 py-3 text-gray-700">
-                            2024-01-14
-                          </td>
-                          <td className="px-4 py-3 text-gray-700">
-                            0x6e7f...8g9h
-                          </td>
-                          <td className="px-4 py-3 text-gray-700">ETH</td>
-                          <td className="px-4 py-3 text-right text-gray-700">
-                            78.25
-                          </td>
-                          <td className="px-4 py-3 text-right text-gray-700">
-                            $177,467.50
-                          </td>
-                        </tr>
-                      </tbody>
-                    </table>
-                  </div>
-                </div>
-
-                <div className="mt-3 text-xs text-gray-600 text-center">
-                  Showing 4 of ~1,247 matching records
-                </div>
-              </div>
-
-              {/* Export Format Options */}
-              <div className="bg-white border border-gray-300 p-5">
-                <h2 className="text-sm font-semibold text-gray-900 mb-4">
-                  Export Format
-                </h2>
-
-                <div className="space-y-3">
-                  <label className="flex items-center space-x-3 p-3 border border-gray-300 hover:bg-gray-50 cursor-pointer">
-                    <input
-                      type="checkbox"
-                      defaultChecked
-                      className="w-4 h-4"
-                    />
-                    <div className="flex-1">
-                      <div className="flex items-center justify-between">
-                        <div className="flex items-center space-x-2">
-                          <i className="fas fa-file-csv text-gray-600" />
-                          <span className="text-sm font-semibold text-gray-900">
-                            CSV (Comma-Separated Values)
-                          </span>
-                        </div>
-                        <span className="text-xs text-gray-600">
-                          Raw data export
-                        </span>
-                      </div>
-                    </div>
-                  </label>
-
-                  <label className="flex items-center space-x-3 p-3 border border-gray-300 hover:bg-gray-50 cursor-pointer">
-                    <input
-                      type="checkbox"
-                      defaultChecked
-                      className="w-4 h-4"
-                    />
-                    <div className="flex-1">
-                      <div className="flex items-center justify-between">
-                        <div className="flex items-center space-x-2">
-                          <i className="fas fa-file-pdf text-gray-600" />
-                          <span className="text-sm font-semibold text-gray-900">
-                            PDF (Formatted Report)
-                          </span>
-                        </div>
-                        <span className="text-xs text-gray-600">
-                          Professional document
-                        </span>
-                      </div>
-                    </div>
-                  </label>
-
-                  <label className="flex items-center space-x-3 p-3 border border-gray-300 hover:bg-gray-50 cursor-pointer">
-                    <input type="checkbox" className="w-4 h-4" />
-                    <div className="flex-1">
-                      <div className="flex items-center justify-between">
-                        <div className="flex items-center space-x-2">
-                          <i className="fas fa-chart-bar text-gray-600" />
-                          <span className="text-sm font-semibold text-gray-900">
-                            Chart Images (PNG)
-                          </span>
-                        </div>
-                        <span className="text-xs text-gray-600">
-                          Visual representations
-                        </span>
-                      </div>
-                    </div>
-                  </label>
                 </div>
               </div>
 
               {/* Generate Button & Progress */}
               <div className="bg-white border border-gray-300 p-5">
-                <button className="w-full bg-gray-900 text-white py-4 px-6 text-sm font-semibold hover:bg-gray-800 flex items-center justify-center space-x-3">
-                  <i className="fas fa-play-circle" />
-                  <span>Generate Report</span>
+                <button
+                  onClick={generateReport}
+                  disabled={loading}
+                  className="w-full bg-gray-900 text-white py-4 px-6 text-sm font-semibold hover:bg-gray-800 flex items-center justify-center space-x-3 disabled:bg-gray-400"
+                >
+                  {loading ? (
+                    <i className="fas fa-spinner fa-spin" />
+                  ) : (
+                    <i className="fas fa-play-circle" />
+                  )}
+                  <span>{loading ? "Generating..." : "Generate Report"}</span>
                 </button>
-
-                {/* Progress Indicator (hidden by default, shown during generation) */}
-                <div className="mt-4 hidden">
-                  <div className="flex items-center justify-between text-xs text-gray-700 mb-2">
-                    <span>Generating report...</span>
-                    <span>45%</span>
-                  </div>
-                  <div className="w-full bg-gray-200 h-2">
-                    <div
-                      className="bg-gray-900 h-2"
-                      style={{ width: "45%" }}
-                    />
-                  </div>
-                  <div className="mt-2 text-xs text-gray-600">
-                    <i className="fas fa-spinner fa-spin mr-2" />
-                    Processing 1,247 transactions...
-                  </div>
-                </div>
               </div>
-            </div>
 
-            {/* Right Sidebar - Report History */}
-            <div className="w-full lg:w-80 space-y-6">
-              {/* Report History */}
-              <div className="bg-white border border-gray-300 p-5">
-                <div className="flex items-center justify-between mb-4">
-                  <h2 className="text-sm font-semibold text-gray-900">
-                    Report History
-                  </h2>
-                  <button className="text-xs text-gray-600 hover:text-gray-900">
-                    View All
-                  </button>
-                </div>
-
-                <div className="space-y-3">
-                  <div className="border border-gray-300 p-3 hover:bg-gray-50 cursor-pointer">
-                    <div className="flex items-start space-x-3">
-                      <div className="w-12 h-12 bg-gray-200 border border-gray-300 flex-shrink-0 flex items-center justify-center">
-                        <i className="fas fa-file-alt text-gray-600" />
-                      </div>
-                      <div className="flex-1 min-w-0">
-                        <div className="text-xs font-semibold text-gray-900 truncate">
-                          Transaction Aggregation
-                        </div>
-                        <div className="text-xs text-gray-600 mt-1">
-                          Jan 1-31, 2024
-                        </div>
-                        <div className="flex items-center space-x-2 mt-2">
-                          <span className="text-xs text-gray-500">
-                            2 hours ago
-                          </span>
-                          <span className="text-xs text-gray-400">•</span>
-                          <span className="text-xs text-gray-500">2.4 MB</span>
-                        </div>
-                      </div>
-                    </div>
+              {/* Data Preview */}
+              {reportData && (
+                <div className="bg-white border border-gray-300 p-5">
+                  <div className="flex items-center justify-between mb-4">
+                    <h2 className="text-sm font-semibold text-gray-900">
+                      Report Results
+                    </h2>
+                    <span className="text-xs text-gray-600">
+                      {reportData.length} records found
+                    </span>
+                    <button
+                      onClick={downloadCSV}
+                      className="text-xs bg-green-600 text-white px-3 py-1 hover:bg-green-700 rounded"
+                    >
+                      Export CSV
+                    </button>
                   </div>
 
-                  <div className="border border-gray-300 p-3 hover:bg-gray-50 cursor-pointer">
-                    <div className="flex items-start space-x-3">
-                      <div className="w-12 h-12 bg-gray-200 border border-gray-300 flex-shrink-0 flex items-center justify-center">
-                        <i className="fas fa-chart-line text-gray-600" />
-                      </div>
-                      <div className="flex-1 min-w-0">
-                        <div className="text-xs font-semibold text-gray-900 truncate">
-                          Trend Analysis
-                        </div>
-                        <div className="text-xs text-gray-600 mt-1">
-                          Dec 2023
-                        </div>
-                        <div className="flex items-center space-x-2 mt-2">
-                          <span className="text-xs text-gray-500">
-                            1 day ago
-                          </span>
-                          <span className="text-xs text-gray-400">•</span>
-                          <span className="text-xs text-gray-500">1.8 MB</span>
-                        </div>
-                      </div>
-                    </div>
-                  </div>
-
-                  <div className="border border-gray-300 p-3 hover:bg-gray-50 cursor-pointer">
-                    <div className="flex items-start space-x-3">
-                      <div className="w-12 h-12 bg-gray-200 border border-gray-300 flex-shrink-0 flex items-center justify-center">
-                        <i className="fas fa-project-diagram text-gray-600" />
-                      </div>
-                      <div className="flex-1 min-w-0">
-                        <div className="text-xs font-semibold text-gray-900 truncate">
-                          Cluster Activity
-                        </div>
-                        <div className="text-xs text-gray-600 mt-1">
-                          Q4 2023
-                        </div>
-                        <div className="flex items-center space-x-2 mt-2">
-                          <span className="text-xs text-gray-500">
-                            3 days ago
-                          </span>
-                          <span className="text-xs text-gray-400">•</span>
-                          <span className="text-xs text-gray-500">3.1 MB</span>
-                        </div>
-                      </div>
-                    </div>
-                  </div>
-
-                  <div className="border border-gray-300 p-3 hover:bg-gray-50 cursor-pointer">
-                    <div className="flex items-start space-x-3">
-                      <div className="w-12 h-12 bg-gray-200 border border-gray-300 flex-shrink-0 flex items-center justify-center">
-                        <i className="fas fa-file-alt text-gray-600" />
-                      </div>
-                      <div className="flex-1 min-w-0">
-                        <div className="text-xs font-semibold text-gray-900 truncate">
-                          Transaction Aggregation
-                        </div>
-                        <div className="text-xs text-gray-600 mt-1">
-                          Nov 2023
-                        </div>
-                        <div className="flex items-center space-x-2 mt-2">
-                          <span className="text-xs text-gray-500">
-                            1 week ago
-                          </span>
-                          <span className="text-xs text-gray-400">•</span>
-                          <span className="text-xs text-gray-500">2.1 MB</span>
-                        </div>
-                      </div>
-                    </div>
-                  </div>
-
-                  <div className="border border-gray-300 p-3 hover:bg-gray-50 cursor-pointer">
-                    <div className="flex items-start space-x-3">
-                      <div className="w-12 h-12 bg-gray-200 border border-gray-300 flex-shrink-0 flex items-center justify-center">
-                        <i className="fas fa-chart-line text-gray-600" />
-                      </div>
-                      <div className="flex-1 min-w-0">
-                        <div className="text-xs font-semibold text-gray-900 truncate">
-                          Trend Analysis
-                        </div>
-                        <div className="text-xs text-gray-600 mt-1">
-                          Oct 2023
-                        </div>
-                        <div className="flex items-center space-x-2 mt-2">
-                          <span className="text-xs text-gray-500">
-                            2 weeks ago
-                          </span>
-                          <span className="text-xs text-gray-400">•</span>
-                          <span className="text-xs text-gray-500">1.5 MB</span>
-                        </div>
-                      </div>
+                  <div className="border border-gray-300 overflow-hidden max-h-96 overflow-y-auto">
+                    <div className="overflow-x-auto">
+                      <table className="w-full text-xs">
+                        <thead className="bg-gray-100 border-b border-gray-300">
+                          <tr>
+                            <th className="px-4 py-3 text-left font-semibold text-gray-900">
+                              Timestamp
+                            </th>
+                            <th className="px-4 py-3 text-left font-semibold text-gray-900">
+                              Metric
+                            </th>
+                            <th className="px-4 py-3 text-right font-semibold text-gray-900">
+                              Value
+                            </th>
+                            <th className="px-4 py-3 text-right font-semibold text-gray-900">
+                              Source
+                            </th>
+                          </tr>
+                        </thead>
+                        <tbody className="divide-y divide-gray-200">
+                          {reportData.length === 0 ? (
+                            <tr>
+                              <td colSpan="4" className="px-4 py-8 text-center text-gray-500">
+                                No data found for this range.
+                              </td>
+                            </tr>
+                          ) : (
+                            reportData.map((item) => (
+                              <tr key={item.id} className="hover:bg-gray-50">
+                                <td className="px-4 py-3 text-gray-700">
+                                  {new Date(item.ts).toLocaleString()}
+                                </td>
+                                <td className="px-4 py-3 text-gray-700">
+                                  {item.metricName}
+                                </td>
+                                <td className="px-4 py-3 text-right text-gray-700 font-mono">
+                                  {item.value.toLocaleString()}
+                                </td>
+                                <td className="px-4 py-3 text-right text-gray-500">
+                                  {item.source}
+                                </td>
+                              </tr>
+                            ))
+                          )}
+                        </tbody>
+                      </table>
                     </div>
                   </div>
                 </div>
-              </div>
+              )}
             </div>
           </div>
         </main>
@@ -572,3 +298,4 @@ const DataReportingInterface = () => {
 };
 
 export default DataReportingInterface;
+
