@@ -9,6 +9,7 @@ import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Service;
 
 import java.time.OffsetDateTime;
+import java.time.ZoneOffset;
 import java.util.*;
 import java.util.stream.Collectors;
 
@@ -24,19 +25,24 @@ public class MetricService {
 
     public OffsetDateTime sinceFromRange(String range) {
         OffsetDateTime now = OffsetDateTime.now();
+
+        OffsetDateTime allSince = OffsetDateTime.of(1970, 1, 1, 0, 0, 0, 0, ZoneOffset.UTC);
+
         if (range == null || range.equals("all")) {
             LogStrategy.info(log, LogEvents.METRIC_RANGE_RESOLVED, "inputRange", range, "resolvedRange", "all");
-            return OffsetDateTime.MIN;
+            return allSince;
         }
 
         OffsetDateTime since = switch (range) {
             case "24h" -> now.minusHours(24);
             case "7d" -> now.minusDays(7);
             case "30d" -> now.minusDays(30);
-            default -> OffsetDateTime.MIN;
+            default -> allSince;
         };
+
         LogStrategy.info(log, LogEvents.METRIC_RANGE_RESOLVED, "inputRange", range, "resolvedRange",
-                since == OffsetDateTime.MIN ? "all" : range);
+                since.equals(allSince) ? "all" : range);
+
         return since;
     }
 
@@ -62,11 +68,18 @@ public class MetricService {
 
     /**
      * Simple “dashboard cards” summary:
-     * - tx_count: sum
-     * - tx_volume: sum
-     * - active_wallets: latest value
-     * - success_rate: latest value
+     * - best_block_number: latest value
+     * - best_block_timestamp: latest value
+     * - block_lag_seconds: latest value
      */
+
+    /*
+    * select id, metric_name, value, ts, source
+    * from metric_samples
+    * order by ts desc
+    * limit 30;
+    */
+
     public Map<String, Object> getSummary(String range) {
         OffsetDateTime since = sinceFromRange(range);
         List<MetricSample> samples = repo.findByTsAfterOrderByTsAsc(since);
@@ -74,28 +87,22 @@ public class MetricService {
         Map<String, List<MetricSample>> byName = samples.stream()
                 .collect(Collectors.groupingBy(MetricSample::getMetricName));
 
-        double txCount = sum(byName.get("tx_count"));
-        double txVolume = sum(byName.get("tx_volume"));
-
-        Double activeWallets = latest(byName.get("active_wallets"));
-        Double successRate = latest(byName.get("success_rate"));
+        Double bestBlockNumber = latest(byName.get("best_block_number"));
+        Double bestBlockTimestamp = latest(byName.get("best_block_timestamp"));
+        Double blockLagSeconds = latest(byName.get("block_lag_seconds"));
 
         Map<String, Object> out = new LinkedHashMap<>();
         out.put("range", range == null ? "all" : range);
-        out.put("txCount", txCount);
-        out.put("txVolume", txVolume);
-        out.put("activeWallets", activeWallets);
-        out.put("successRate", successRate);
+        out.put("bestBlockNumber", bestBlockNumber);
+        out.put("bestBlockTimestamp", bestBlockTimestamp);
+        out.put("blockLagSeconds", blockLagSeconds);
+        out.put("source", "vechain_mainnet");
 
-        LogStrategy.info(log, LogEvents.METRIC_SUMMARY_FETCHED, "range", out.get("range"), "sampleCount",
-                samples.size());
+        LogStrategy.info(log, LogEvents.METRIC_SUMMARY_FETCHED,
+                "range", out.get("range"),
+                "sampleCount", samples.size());
+
         return out;
-    }
-
-    private double sum(List<MetricSample> list) {
-        if (list == null)
-            return 0;
-        return list.stream().mapToDouble(MetricSample::getValue).sum();
     }
 
     private Double latest(List<MetricSample> list) {

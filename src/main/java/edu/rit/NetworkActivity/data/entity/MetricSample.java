@@ -17,7 +17,7 @@ public class MetricSample {
     private Long id;
 
     @Column(nullable = false)
-    private String metricName; // e.g. tx_count, tx_volume, active_wallets, success_rate
+    private String metricName; //tx_count, tx_volume, active_wallets, success_rate
 
     @Column(nullable = false)
     private Double value;
@@ -26,7 +26,7 @@ public class MetricSample {
     private OffsetDateTime ts;
 
     @Column(nullable = false)
-    private String source; // waiting for vechain
+    private String source;
 
     public MetricSample() {}
 
