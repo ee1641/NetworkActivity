@@ -1,11 +1,8 @@
 package edu.rit.NetworkActivity.web.controller;
 
 import edu.rit.NetworkActivity.service.VeChainThorClient;
+import edu.rit.NetworkActivity.service.dto.VeChainSummaryDto;
 import org.springframework.web.bind.annotation.*;
-
-import java.util.Map;
-
-//http://localhost:8080/api/vechain/status
 
 @RestController
 @RequestMapping("/api/vechain")
@@ -19,7 +16,7 @@ public class VeChainController {
     }
 
     @GetMapping("/status")
-    public Map<String, Object> status() {
-        return client.getBestBlock();
+    public VeChainSummaryDto status() {
+        return client.getSummary();
     }
 }

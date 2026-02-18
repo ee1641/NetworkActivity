@@ -10,10 +10,8 @@ import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Service;
 
 import java.time.Instant;
-import java.time.LocalDateTime;
 import java.time.OffsetDateTime;
 import java.time.ZoneOffset;
-import java.util.Map;
 
 @Service
 public class MetricCollector {
@@ -27,46 +25,54 @@ public class MetricCollector {
         this.metricRepository = metricRepository;
     }
 
-    // Run every 10 seconds
-    @Scheduled(fixedRate = 10000)
+    @Scheduled(fixedRate = 20000)
     public void collectMetrics() {
-        Map<String, Object> blockData = veChainClient.getBestBlock();
-
-        if (blockData.containsKey("error")) {
-            LogStrategy.warn(log, LogEvents.METRIC_COLLECT_SKIPPED, "reason", blockData.get("error"));
-            return;
-        }
-
         try {
-            long timestamp = ((Number) blockData.get("timestamp")).longValue();
-            OffsetDateTime ts = OffsetDateTime.ofInstant(Instant.ofEpochSecond(timestamp), ZoneOffset.UTC);
-            // If block is older than 1 minute, use current time to ensure recent data
-            // points in UI
-            if (ts.isBefore(OffsetDateTime.now().minusMinutes(1))) {
-                ts = OffsetDateTime.now();
+            var dto = veChainClient.getSummary();
+
+            if (dto == null) {
+                LogStrategy.warn(log, LogEvents.METRIC_COLLECT_SKIPPED, "reason", "null_response");
+                return;
             }
+
+            // If node returns an error shape, or some unexpected JSON
+            if (!"vechain-sdk".equals(dto.getSource())) {
+                LogStrategy.warn(log, LogEvents.METRIC_COLLECT_SKIPPED,
+                        "reason", "invalid_source",
+                        "source", dto.getSource(),
+                        "message", dto.getMessage());
+                return;
+            }
+
+            if (dto.getBestBlockNumber() == null || dto.getBestBlockTimestamp() == null) {
+                LogStrategy.warn(log, LogEvents.METRIC_COLLECT_SKIPPED,
+                        "reason", "missing_fields",
+                        "bestBlockNumber", dto.getBestBlockNumber(),
+                        "bestBlockTimestamp", dto.getBestBlockTimestamp());
+                return;
+            }
+
+            // Convert chain timestamp -> OffsetDateTime
+            OffsetDateTime ts = OffsetDateTime.ofInstant(
+                    Instant.ofEpochSecond(dto.getBestBlockTimestamp()),
+                    ZoneOffset.UTC);
 
             String source = "vechain_mainnet";
 
-            // Save Transaction Count
-            double txCount = ((Number) blockData.get("txCount")).doubleValue();
-            saveMetric("tx_count", txCount, ts, source);
+            // Store real metrics we actually have
+            saveMetric("best_block_number", dto.getBestBlockNumber().doubleValue(), ts, source);
+            saveMetric("best_block_timestamp", dto.getBestBlockTimestamp().doubleValue(), ts, source);
 
-            // Save VTHO Burn (Gas Used)
-            double gasUsed = ((Number) blockData.get("gasUsed")).doubleValue();
-            saveMetric("vtho_burn", gasUsed, ts, source);
+            // Derived metric: how “stale” the chain time is compared to now
+            long lagSeconds = Math.max(0,
+                    OffsetDateTime.now(ZoneOffset.UTC).toEpochSecond() - dto.getBestBlockTimestamp());
+            saveMetric("block_lag_seconds", (double) lagSeconds, OffsetDateTime.now(ZoneOffset.UTC), source);
 
-            // Mock Active Wallets (Real extraction requires expanding txs which is heavy
-            // for this demo)
-            // Simulating a value based on tx count for now
-            double activeWallets = txCount * 1.5 + (Math.random() * 10);
-            saveMetric("active_wallets", activeWallets, ts, source);
-
-            // Mock Success Rate (Usually high in VeChain)
-            saveMetric("success_rate", 99.0 + (Math.random()), ts, source);
-
-            LogStrategy.info(log, LogEvents.METRIC_COLLECT_SUCCESS, "block", blockData.get("number"), "txCount",
-                    txCount);
+            LogStrategy.info(log, LogEvents.METRIC_COLLECT_SUCCESS,
+                    "bestBlockNumber", dto.getBestBlockNumber(),
+                    "bestBlockId", dto.getBestBlockId(),
+                    "bestBlockTimestamp", dto.getBestBlockTimestamp(),
+                    "lagSeconds", lagSeconds);
 
         } catch (Exception e) {
             LogStrategy.error(log, LogEvents.METRIC_COLLECT_ERROR, e);
