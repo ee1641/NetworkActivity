@@ -1,8 +1,16 @@
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import Sidebar from "./Sidebar";
+import { supabase } from "../utils/supabase";
 
 const UserSettings = () => {
   const [activeTab, setActiveTab] = useState("account");
+  const [userEmail, setUserEmail] = useState("");
+
+  useEffect(() => {
+    supabase.auth.getSession().then(({ data: { session } }) => {
+      if (session?.user?.email) setUserEmail(session.user.email);
+    });
+  }, []);
 
   return (
     <div className="bg-gray-50 min-h-screen flex flex-col">
@@ -124,7 +132,8 @@ const UserSettings = () => {
                         </label>
                         <input
                           type="email"
-                          defaultValue="user@example.com"
+                          value={userEmail}
+                          readOnly
                           className="w-full px-4 py-2 border border-gray-300 bg-gray-50 text-gray-900 text-sm focus:outline-none focus:border-gray-900"
                         />
                       </div>
