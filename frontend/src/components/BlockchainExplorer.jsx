@@ -1,22 +1,38 @@
 import React from "react";
+import Sidebar from "./Sidebar";
+import SidebarToggleButton from "./SidebarToggleButton";
+import { useSidebarToggle } from "../hooks/useSidebarToggle";
 
 const BlockchainExplorer = () => {
-  return (
-    <div className="bg-gray-50 min-h-screen">
-      <div className="flex">
-        {/* Sidebar */}
-        <aside className="w-64 bg-white border-r border-gray-300 hidden lg:flex lg:flex-col">
-          <div className="px-4 py-6 border-b border-gray-300">
-            <a href="/dashboard" className="flex items-center space-x-3 mb-6 hover:opacity-80 cursor-pointer">
-              <div className="w-8 h-8 bg-gray-800 flex items-center justify-center">
-                <i className="fas fa-arrow-left text-white text-sm" />
-              </div>
-              <span className="text-lg font-semibold text-gray-900">
-                Back
-              </span>
-            </a>
-          </div>
+  const { isSidebarOpen, toggleSidebar } = useSidebarToggle();
 
+  return (
+    <div className="bg-gray-50 min-h-screen flex flex-col">
+      <Sidebar isOpen={isSidebarOpen} onToggle={toggleSidebar} />
+
+      {/* Header */}
+      <header className="bg-white border-b border-gray-300 px-4 md:px-6 py-4">
+        <div className="flex items-center justify-between">
+          <div className="flex items-center space-x-3">
+            <SidebarToggleButton
+              isSidebarOpen={isSidebarOpen}
+              onToggle={toggleSidebar}
+            />
+            <h1 className="text-xl font-semibold text-gray-900">
+              Blockchain Explorer
+            </h1>
+          </div>
+          <div className="flex items-center space-x-4">
+            <button className="w-8 h-8 flex items-center justify-center text-gray-600 hover:bg-gray-100">
+              <i className="fas fa-cog" />
+            </button>
+          </div>
+        </div>
+      </header>
+
+      <div className="flex flex-1">
+        {/* Explorer Side Panel */}
+        <aside className="w-64 bg-white border-r border-gray-300 hidden lg:flex lg:flex-col">
           <div className="flex-1 px-4 py-6">
             <div className="mb-6">
               <h3 className="text-xs font-semibold text-gray-500 uppercase mb-3">
@@ -96,23 +112,6 @@ const BlockchainExplorer = () => {
 
         {/* Main Content */}
         <main className="flex-1">
-          {/* Header */}
-          <header className="bg-white border-b border-gray-300 px-4 md:px-6 py-4">
-            <div className="flex items-center justify-between">
-              <h1 className="text-xl font-semibold text-gray-900">
-                Blockchain Explorer
-              </h1>
-              <div className="flex items-center space-x-4">
-                <button className="w-8 h-8 flex items-center justify-center text-gray-600 hover:bg-gray-100 lg:hidden">
-                  <i className="fas fa-bars" />
-                </button>
-                <button className="w-8 h-8 flex items-center justify-center text-gray-600 hover:bg-gray-100">
-                  <i className="fas fa-cog" />
-                </button>
-              </div>
-            </div>
-          </header>
-
           {/* Search Section */}
           <div className="p-4 md:p-6">
             <div className="bg-white border border-gray-300 p-6 mb-6">

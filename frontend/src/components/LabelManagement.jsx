@@ -1,7 +1,10 @@
 import React, { useState } from "react";
 import Sidebar from "./Sidebar";
+import SidebarToggleButton from "./SidebarToggleButton";
+import { useSidebarToggle } from "../hooks/useSidebarToggle";
 
 const LabelManagement = () => {
+  const { isSidebarOpen, toggleSidebar } = useSidebarToggle();
   const [isAddLabelOpen, setIsAddLabelOpen] = useState(false);
 
   return (
@@ -10,6 +13,10 @@ const LabelManagement = () => {
       <header className="bg-white border-b border-gray-300 px-4 md:px-6 py-3">
         <div className="flex items-center justify-between">
           <div className="flex items-center space-x-4">
+            <SidebarToggleButton
+              isSidebarOpen={isSidebarOpen}
+              onToggle={toggleSidebar}
+            />
             <div className="w-8 h-8 bg-gray-800 flex items-center justify-center">
               <i className="fas fa-cube text-white text-sm" />
             </div>
@@ -41,7 +48,7 @@ const LabelManagement = () => {
       {/* Main Content Area */}
       <div className="flex flex-1">
         {/* Sidebar Navigation */}
-        <Sidebar />
+        <Sidebar isOpen={isSidebarOpen} onToggle={toggleSidebar} />
 
         {/* Main Label Management Content */}
         <main className="flex-1 p-4 md:p-6">
