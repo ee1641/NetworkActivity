@@ -1,16 +1,11 @@
-import React, { useState, useEffect } from "react";
+import React, { useState } from "react";
 import Sidebar from "./Sidebar";
-import { supabase } from "../utils/supabase";
+import SidebarToggleButton from "./SidebarToggleButton";
+import { useSidebarToggle } from "../hooks/useSidebarToggle";
 
 const UserSettings = () => {
   const [activeTab, setActiveTab] = useState("account");
-  const [userEmail, setUserEmail] = useState("");
-
-  useEffect(() => {
-    supabase.auth.getSession().then(({ data: { session } }) => {
-      if (session?.user?.email) setUserEmail(session.user.email);
-    });
-  }, []);
+  const { isSidebarOpen, toggleSidebar } = useSidebarToggle();
 
   return (
     <div className="bg-gray-50 min-h-screen flex flex-col">
@@ -18,6 +13,10 @@ const UserSettings = () => {
       <header className="bg-white border-b border-gray-300 px-4 md:px-6 py-3">
         <div className="flex items-center justify-between">
           <div className="flex items-center space-x-4">
+            <SidebarToggleButton
+              isSidebarOpen={isSidebarOpen}
+              onToggle={toggleSidebar}
+            />
             <div className="w-8 h-8 bg-gray-800 flex items-center justify-center">
               <i className="fas fa-cube text-white text-sm" />
             </div>
@@ -49,7 +48,7 @@ const UserSettings = () => {
       {/* Main Content Area */}
       <div className="flex flex-1">
         {/* Sidebar Navigation */}
-        <Sidebar />
+        <Sidebar isOpen={isSidebarOpen} onToggle={toggleSidebar} />
 
         {/* Main Settings Content */}
         <main className="flex-1 p-4 md:p-6">
@@ -132,8 +131,7 @@ const UserSettings = () => {
                         </label>
                         <input
                           type="email"
-                          value={userEmail}
-                          readOnly
+                          defaultValue="user@example.com"
                           className="w-full px-4 py-2 border border-gray-300 bg-gray-50 text-gray-900 text-sm focus:outline-none focus:border-gray-900"
                         />
                       </div>

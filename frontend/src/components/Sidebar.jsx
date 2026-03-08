@@ -1,13 +1,27 @@
 import React from "react";
 import { useLocation } from "react-router-dom";
 
-const Sidebar = () => {
+const Sidebar = ({ isOpen = true, onToggle }) => {
   const location = useLocation();
 
   const isActive = (path) => location.pathname === path;
 
   return (
-    <aside className="w-64 bg-white border-r border-gray-300 hidden lg:flex lg:flex-col">
+    <aside
+      className="fixed inset-y-0 left-0 z-40 w-64 bg-white border-r border-gray-300 flex-col shadow-lg"
+      style={{ display: isOpen ? "flex" : "none" }}
+    >
+      <div className="px-3 py-2 border-b border-gray-300">
+        <button
+          type="button"
+          onClick={onToggle}
+          aria-label="Collapse sidebar"
+          className="w-7 h-7 flex items-center justify-center text-gray-600 hover:bg-gray-100"
+        >
+          <i className="fas fa-chevron-left text-xs" />
+        </button>
+      </div>
+
       <nav className="flex-1 px-4 py-6 space-y-1">
         <a
           href="/dashboard"

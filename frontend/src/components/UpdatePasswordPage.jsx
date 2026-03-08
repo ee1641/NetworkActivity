@@ -1,9 +1,13 @@
 import React, { useState, useEffect } from "react";
 import { supabase } from "../utils/supabase";
 import { useNavigate } from "react-router-dom";
+import Sidebar from "./Sidebar";
+import SidebarToggleButton from "./SidebarToggleButton";
+import { useSidebarToggle } from "../hooks/useSidebarToggle";
 
 export default function UpdatePasswordPage() {
     const navigate = useNavigate();
+    const { isSidebarOpen, toggleSidebar } = useSidebarToggle(false);
     const [password, setPassword] = useState("");
     const [confirmPassword, setConfirmPassword] = useState("");
     const [loading, setLoading] = useState(false);
@@ -62,7 +66,26 @@ export default function UpdatePasswordPage() {
     };
 
     return (
-        <div className="bg-gray-50 min-h-screen flex items-center justify-center px-6 py-12">
+        <div className="bg-gray-50 min-h-screen flex items-center justify-center px-6 py-12 relative">
+            <div className="fixed top-4 left-4 z-50 bg-white border border-gray-300">
+                <SidebarToggleButton
+                    isSidebarOpen={isSidebarOpen}
+                    onToggle={toggleSidebar}
+                />
+            </div>
+
+            {isSidebarOpen && (
+                <>
+                    <div
+                        className="fixed inset-0 bg-black bg-opacity-30 z-30"
+                        onClick={toggleSidebar}
+                    />
+                    <div className="fixed left-0 top-0 z-40 h-full">
+                        <Sidebar isOpen={isSidebarOpen} onToggle={toggleSidebar} />
+                    </div>
+                </>
+            )}
+
             <div className="w-full max-w-md bg-white p-8 rounded-2xl shadow-xl border border-gray-100">
                 <div className="mb-8 text-center">
                     <div className="w-12 h-12 bg-gray-900 flex items-center justify-center rounded-lg mx-auto mb-4">

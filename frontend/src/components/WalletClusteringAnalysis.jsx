@@ -1,12 +1,24 @@
 import React from "react";
+import Sidebar from "./Sidebar";
+import SidebarToggleButton from "./SidebarToggleButton";
+import { useSidebarToggle } from "../hooks/useSidebarToggle";
 
 const WalletClusteringAnalysis = () => {
+  const { isSidebarOpen, toggleSidebar } = useSidebarToggle();
+
   return (
-    <div className="min-h-screen bg-gray-50 flex flex-col">
+    <div className="min-h-screen bg-gray-50 flex">
+      <Sidebar isOpen={isSidebarOpen} onToggle={toggleSidebar} />
+
+      <div className="flex-1 flex flex-col">
       {/* Top Navigation Bar */}
       <header className="bg-white border-b border-gray-300 px-4 md:px-6 py-3">
         <div className="flex items-center justify-between">
           <div className="flex items-center space-x-4">
+            <SidebarToggleButton
+              isSidebarOpen={isSidebarOpen}
+              onToggle={toggleSidebar}
+            />
             <div className="w-8 h-8 bg-gray-800 flex items-center justify-center">
               <i className="fas fa-project-diagram text-white text-sm" />
             </div>
@@ -418,6 +430,7 @@ const WalletClusteringAnalysis = () => {
             </div>
           </div>
         </main>
+      </div>
       </div>
     </div>
   );
