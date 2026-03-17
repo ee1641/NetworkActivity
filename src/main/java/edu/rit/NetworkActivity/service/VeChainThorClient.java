@@ -1,6 +1,7 @@
 package edu.rit.NetworkActivity.service;
 
 import edu.rit.NetworkActivity.service.dto.VeChainSummaryDto;
+import org.springframework.http.client.SimpleClientHttpRequestFactory;
 import org.springframework.stereotype.Service;
 import org.springframework.web.client.HttpClientErrorException;
 import org.springframework.web.client.RestTemplate;
@@ -10,8 +11,15 @@ import java.util.Map;
 @Service
 public class VeChainThorClient {
 
-    private final RestTemplate restTemplate = new RestTemplate();
+    private final RestTemplate restTemplate;
     private final String thorServiceBaseUrl = "http://localhost:4010";
+
+    public VeChainThorClient() {
+        SimpleClientHttpRequestFactory factory = new SimpleClientHttpRequestFactory();
+        factory.setConnectTimeout(5_000);   // 5 s — fail fast if thor-sdk is down
+        factory.setReadTimeout(10_000);     // 10 s — give the VeChain node time to respond
+        this.restTemplate = new RestTemplate(factory);
+    }
 
     /** Returns best-block summary used by MetricCollector. */
     public VeChainSummaryDto getSummary() {

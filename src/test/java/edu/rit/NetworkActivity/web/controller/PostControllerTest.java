@@ -10,6 +10,7 @@ import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
+import org.springframework.data.domain.*;
 import org.springframework.http.MediaType;
 import org.springframework.test.web.servlet.MockMvc;
 import org.springframework.test.web.servlet.setup.MockMvcBuilders;
@@ -45,22 +46,25 @@ class PostControllerTest {
 
     @Test
     void getPostsReturnsListOfPosts() throws Exception {
-        when(postRepository.findAllByOrderByCreatedAtDesc()).thenReturn(List.of(makePost(1L, "Hello", "World")));
+        var posts = List.of(makePost(1L, "Hello", "World"));
+        Page<Post> page = new PageImpl<>(posts, PageRequest.of(0, 20), posts.size());
+        when(postRepository.findAll(any(Pageable.class))).thenReturn(page);
 
         mockMvc.perform(get("/api/posts"))
                 .andExpect(status().isOk())
-                .andExpect(jsonPath("$[0].id").value(1))
-                .andExpect(jsonPath("$[0].title").value("Hello"));
+                .andExpect(jsonPath("$.content[0].id").value(1))
+                .andExpect(jsonPath("$.content[0].title").value("Hello"));
     }
 
     @Test
     void getPostsWithRangeFiltersResults() throws Exception {
-        when(postRepository.findByCreatedAtAfterOrderByCreatedAtDesc(any())).thenReturn(List.of());
+        Page<Post> page = new PageImpl<>(List.of(), PageRequest.of(0, 20), 0);
+        when(postRepository.findByCreatedAtAfter(any(), any(Pageable.class))).thenReturn(page);
 
         mockMvc.perform(get("/api/posts").param("range", "24h"))
                 .andExpect(status().isOk());
 
-        verify(postRepository).findByCreatedAtAfterOrderByCreatedAtDesc(any());
+        verify(postRepository).findByCreatedAtAfter(any(), any(Pageable.class));
     }
 
     // ── GET /api/posts/{id} ───────────────────────────────────────────────────

@@ -36,13 +36,13 @@ const Dashboard = () => {
               <i className="fas fa-cog" />
             </button>
 
-            {/* User Profile */}
-            <div className="flex items-center space-x-2">
-              <div className="w-8 h-8 bg-gray-300 rounded-full" />
-              <span className="text-sm text-gray-700 hidden md:block">
-                User Name
-              </span>
-            </div>
+            {/* Logout */}
+            <button
+              onClick={() => supabase.auth.signOut()}
+              className="text-sm text-gray-700 px-3 py-1.5 border border-gray-300 hover:bg-gray-100 transition-colors"
+            >
+              Sign Out
+            </button>
           </div>
         </div>
       </header>
