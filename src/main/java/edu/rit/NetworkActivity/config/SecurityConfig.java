@@ -3,6 +3,7 @@ package edu.rit.NetworkActivity.config;
 import edu.rit.NetworkActivity.security.JwtAuthenticationFilter;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
+import org.springframework.http.HttpMethod;
 import org.springframework.security.config.annotation.method.configuration.EnableMethodSecurity;
 import org.springframework.security.config.annotation.web.builders.HttpSecurity;
 import org.springframework.security.config.http.SessionCreationPolicy;
@@ -24,27 +25,6 @@ public class SecurityConfig {
         this.jwtAuthenticationFilter = jwtAuthenticationFilter;
     }
 
-    // change to this later
-
-    // @Bean
-    // public SecurityFilterChain securityFilterChain(HttpSecurity http) throws
-    // Exception {
-    // http
-    // .sessionManagement(session ->
-    // session.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
-    // .csrf(csrf -> csrf.disable())
-    // .cors(cors -> cors.configurationSource(corsConfigurationSource()))
-    // .authorizeHttpRequests(auth -> auth
-    // // All /api/** endpoints require a valid Supabase JWT
-    // .requestMatchers("/api/**").authenticated()
-    // .anyRequest().permitAll())
-    // .addFilterBefore(jwtAuthenticationFilter,
-    // UsernamePasswordAuthenticationFilter.class);
-
-    // return http.build();
-    // }
-
-    // just for testing, we cant permit all
     @Bean
     public SecurityFilterChain securityFilterChain(HttpSecurity http) throws Exception {
         http
@@ -52,17 +32,30 @@ public class SecurityConfig {
                 .csrf(csrf -> csrf.disable())
                 .cors(cors -> cors.configurationSource(corsConfigurationSource()))
                 .authorizeHttpRequests(auth -> auth
-                        .requestMatchers(
-                                "/api/metrics/**",
-                                "/api/vechain/**",
-                                "/api/flows/**",
-                                "/api/labels/**",
-                                "/api/search/**")
-                        .permitAll()
+
+                        // public read/search endpoints
+                        .requestMatchers("/api/search/**").permitAll()
+                        .requestMatchers("/api/metrics/**").permitAll()
+                        .requestMatchers("/api/vechain/**").permitAll()
+                        .requestMatchers("/api/flows/**").permitAll()
+
+                        // labels: public reads
+                        .requestMatchers(HttpMethod.GET, "/api/labels/**").permitAll()
+
+                        // labels: protected writes
+                        .requestMatchers(HttpMethod.POST, "/api/labels/**").authenticated()
+                        .requestMatchers(HttpMethod.PUT, "/api/labels/**").authenticated()
+                        .requestMatchers(HttpMethod.DELETE, "/api/labels/**").authenticated()
+
+                        // preflight
+                        .requestMatchers(HttpMethod.OPTIONS, "/**").permitAll()
+
+                        // everything else under /api requires auth
                         .requestMatchers("/api/**").authenticated()
+
+                        // non-api routes
                         .anyRequest().permitAll())
-                .addFilterBefore(jwtAuthenticationFilter,
-                        UsernamePasswordAuthenticationFilter.class);
+                .addFilterBefore(jwtAuthenticationFilter, UsernamePasswordAuthenticationFilter.class);
 
         return http.build();
     }
