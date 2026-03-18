@@ -24,12 +24,13 @@ public class FlowController {
     @GetMapping("/aggregate")
     public FlowAggregateDto aggregate(
             @RequestParam(required = false) String start,
-            @RequestParam(required = false) String end) {
+            @RequestParam(required = false) String end,
+            @RequestParam(required = false) String address) {
 
         OffsetDateTime endDate = end != null ? OffsetDateTime.parse(end) : OffsetDateTime.now();
         OffsetDateTime startDate = start != null ? OffsetDateTime.parse(start) : endDate.minusHours(24);
 
-        return flowService.getAggregate(startDate, endDate);
+        return flowService.getAggregate(startDate, endDate, address);
     }
 
     @GetMapping("/address/{address}")
@@ -65,6 +66,8 @@ public class FlowController {
         OffsetDateTime endDate = end != null ? OffsetDateTime.parse(end) : OffsetDateTime.now();
         OffsetDateTime startDate = start != null ? OffsetDateTime.parse(start) : endDate.minusHours(24);
 
-        return flowService.getTopHotspots(startDate, endDate, limit);
+        int safeLimit = Math.max(1, Math.min(limit, 100));
+
+        return flowService.getTopHotspots(startDate, endDate, safeLimit);
     }
 }

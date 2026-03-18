@@ -24,8 +24,7 @@ public class SecurityConfig {
         this.jwtAuthenticationFilter = jwtAuthenticationFilter;
     }
 
-
-    //change to this later
+    // change to this later
 
     // @Bean
     // public SecurityFilterChain securityFilterChain(HttpSecurity http) throws
@@ -45,7 +44,7 @@ public class SecurityConfig {
     // return http.build();
     // }
 
-    //just for testing, we cant permit all
+    // just for testing, we cant permit all
     @Bean
     public SecurityFilterChain securityFilterChain(HttpSecurity http) throws Exception {
         http
@@ -57,7 +56,8 @@ public class SecurityConfig {
                                 "/api/metrics/**",
                                 "/api/vechain/**",
                                 "/api/flows/**",
-                                "/api/labels/**")
+                                "/api/labels/**",
+                                "/api/search/**")
                         .permitAll()
                         .requestMatchers("/api/**").authenticated()
                         .anyRequest().permitAll())

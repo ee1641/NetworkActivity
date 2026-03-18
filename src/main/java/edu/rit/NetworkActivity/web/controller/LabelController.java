@@ -21,8 +21,13 @@ public class LabelController {
     }
 
     @GetMapping
-    public List<LabelDto> getAll(@RequestParam(required = false) String category) {
-        return labelService.getAll(category);
+    public List<LabelDto> getAll(
+            @RequestParam(required = false) String category,
+            @RequestParam(required = false) String entityName,
+            @RequestParam(required = false) String source,
+            @RequestParam(required = false) String address
+    ) {
+        return labelService.getAll(category, entityName, source, address);
     }
 
     @GetMapping("/{address}")
