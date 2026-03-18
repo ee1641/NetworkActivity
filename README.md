@@ -63,19 +63,28 @@ This project is a full-stack application with a Spring Boot backend and a React 
     - Download and install the JDK 21 from [Oracle](https://www.oracle.com/java/technologies/downloads/#java21) or [Adoptium](https://adoptium.net/).
     - Ensure you set the `JAVA_HOME` environment variable during installation or manually afterwards.
 
-2.  **Run the Backend**:
+2.  **Run the API**
     Open Command Prompt or PowerShell, navigate to the project root, and run:
     ```cmd
+    cd thor-sdk
+
+    npm run dev
+    ```
+    The backend will start on `http://localhost:4010`.
+
+    The backend depends on the Thor SDK
+    → make sure localhost:4010 is running first
+
+    The backend connects to Supabase
+    → ensure your application.properties is configured correctly
+
+3.  **Run the Backend**:
+    Open Command Prompt or PowerShell, navigate to the project root, and run:
+    ```cmd
+
     mvnw.cmd spring-boot:run
     ```
     The backend will start on `http://localhost:8080`.
-
-    For the api:
-    ```
-    cd thor-sdk
-    ```
-    npm run dev
-    ```
 
 ### 2. Frontend Setup
 
