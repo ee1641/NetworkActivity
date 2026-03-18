@@ -3,6 +3,8 @@ package edu.rit.NetworkActivity.web.controller;
 import edu.rit.NetworkActivity.logging.LogEvents;
 import edu.rit.NetworkActivity.logging.LogStrategy;
 import edu.rit.NetworkActivity.service.MetricService;
+import edu.rit.NetworkActivity.service.SearchService;
+import edu.rit.NetworkActivity.service.dto.SearchResponseDto;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.web.bind.annotation.*;
@@ -10,31 +12,35 @@ import org.springframework.web.bind.annotation.*;
 import java.util.List;
 import java.util.Map;
 
-/**
- * Auto-complete suggestions endpoint.
- *
- * Currently supports type=metric (metric names from the DB).
- * Address and label autocomplete will be added once the data-collection
- * sprint (friend's work) populates those tables.
- */
 @RestController
+//http://localhost:8080/api/search?q=0x742d35Cc6634C0532925a3b844Bc9e7595f3f8a
+//http://localhost:8080/api/labels?category=Wallet
 @RequestMapping("/api/search")
 @CrossOrigin(origins = "*")
 public class SearchController {
 
     private static final Logger log = LoggerFactory.getLogger(SearchController.class);
-    private final MetricService metricService;
 
-    public SearchController(MetricService metricService) {
+    private final MetricService metricService;
+    private final SearchService searchService;
+
+    public SearchController(MetricService metricService, SearchService searchService) {
         this.metricService = metricService;
+        this.searchService = searchService;
     }
 
-    /**
-     * GET /api/search/autocomplete?q=best&type=metric
-     *
-     * Returns up to 10 matching suggestions.
-     * type defaults to "metric" — other types will be added later.
-     */
+    @GetMapping
+    public SearchResponseDto search(@RequestParam String q) {
+        SearchResponseDto response = searchService.search(q);
+
+        LogStrategy.info(log, LogEvents.API_SEARCH_AUTOCOMPLETE,
+                "endpoint", "search",
+                "q", q,
+                "detectedType", response.getDetectedType());
+
+        return response;
+    }
+
     @GetMapping("/autocomplete")
     public Map<String, Object> autocomplete(
             @RequestParam(defaultValue = "") String q,
@@ -42,7 +48,7 @@ public class SearchController {
 
         List<String> suggestions = switch (type) {
             case "metric" -> metricService.getMetricNameSuggestions(q).stream().limit(10).toList();
-            default       -> List.of();   // unsupported types return empty — not an error
+            default -> List.of();
         };
 
         LogStrategy.info(log, LogEvents.API_SEARCH_AUTOCOMPLETE,

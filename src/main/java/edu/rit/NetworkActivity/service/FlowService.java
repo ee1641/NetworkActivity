@@ -29,8 +29,10 @@ public class FlowService {
         List<Transaction> incoming = transactionRepository.findByToAddressAndTimestampBetween(address, start, end);
 
         Map<Long, Transaction> merged = new LinkedHashMap<>();
-        for (Transaction tx : outgoing) merged.put(tx.getId(), tx);
-        for (Transaction tx : incoming) merged.put(tx.getId(), tx);
+        for (Transaction tx : outgoing)
+            merged.put(tx.getId(), tx);
+        for (Transaction tx : incoming)
+            merged.put(tx.getId(), tx);
 
         return merged.values().stream()
                 .sorted(Comparator.comparing(Transaction::getTimestamp).reversed())
@@ -70,8 +72,14 @@ public class FlowService {
         return dto;
     }
 
-    public FlowAggregateDto getAggregate(OffsetDateTime start, OffsetDateTime end) {
-        List<Transaction> txs = transactionRepository.findByTimestampBetween(start, end);
+    public FlowAggregateDto getAggregate(OffsetDateTime start, OffsetDateTime end, String address) {
+        List<Transaction> txs;
+
+        if (address != null && !address.isBlank()) {
+            txs = getTransactionsForAddress(address, start, end);
+        } else {
+            txs = transactionRepository.findByTimestampBetween(start, end);
+        }
 
         double totalValue = txs.stream()
                 .map(Transaction::getValue)
