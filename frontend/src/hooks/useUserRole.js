@@ -1,6 +1,8 @@
 import { useState, useEffect } from "react";
 import { supabase } from "../utils/supabase";
 
+const API_BASE = "http://localhost:8080";
+
 export function useUserRole() {
   const [role, setRole] = useState(null);
   const [loading, setLoading] = useState(true);
@@ -25,24 +27,23 @@ export function useUserRole() {
       setError(null);
 
       const {
-        data: { user },
-      } = await supabase.auth.getUser();
+        data: { session },
+      } = await supabase.auth.getSession();
 
-      if (!user) {
+      if (!session) {
         setRole(null);
         setLoading(false);
         return;
       }
 
-      const { data, error } = await supabase
-        .from("user_profiles")
-        .select("role")
-        .eq("user_id", user.id)
-        .single();
+      const response = await fetch(`${API_BASE}/api/users/me/role`, {
+        headers: { Authorization: `Bearer ${session.access_token}` },
+      });
 
-      if (error) throw error;
+      if (!response.ok) throw new Error(`HTTP ${response.status}`);
 
-      setRole(data?.role || null);
+      const data = await response.json();
+      setRole(data.role || null);
     } catch (err) {
       console.error("Error fetching user role:", err);
       setError(err.message);
