@@ -10,6 +10,9 @@ import WalletClusteringAnalysis from './components/WalletClusteringAnalysis'
 import DataReportingInterface from './components/DataReportingInterface'
 import LabelManagement from './components/LabelManagement'
 import TopHotspots from './components/TopHotspots'
+import AdminControlPanel from './components/AdminControlPanel'
+import TransactionFlowVisualization from './components/TransactionFlowVisualization'
+import RiskMonitoringDashboard from './components/RiskMonitoringDashboard'
 import './index.css'
 
 function App() {
@@ -73,6 +76,18 @@ function App() {
         <Route
           path="/hotspots"
           element={session ? <TopHotspots /> : <Navigate to="/" replace />}
+        />
+        <Route
+          path="/admin"
+          element={session ? <AdminControlPanel /> : <Navigate to="/" replace />}
+        />
+        <Route
+          path="/transaction-flow"
+          element={session ? <TransactionFlowVisualization /> : <Navigate to="/" replace />}
+        />
+        <Route
+          path="/risk-monitor"
+          element={session ? <RiskMonitoringDashboard /> : <Navigate to="/" replace />}
         />
         <Route
           path="/update-password"

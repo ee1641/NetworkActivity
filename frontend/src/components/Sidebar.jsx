@@ -46,20 +46,6 @@ const Sidebar = ({ isOpen = true, onToggle }) => {
           <span>Explorer</span>
         </a>
         <a
-          href="#"
-          className="flex items-center space-x-3 px-3 py-2 text-gray-700 hover:bg-gray-100"
-        >
-          <i className="fas fa-exchange-alt w-5" />
-          <span>Transactions</span>
-        </a>
-        <a
-          href="#"
-          className="flex items-center space-x-3 px-3 py-2 text-gray-700 hover:bg-gray-100"
-        >
-          <i className="fas fa-coins w-5" />
-          <span>Tokens</span>
-        </a>
-        <a
           href="/hotspots"
           className={`flex items-center space-x-3 px-3 py-2 ${
             isActive("/hotspots")
@@ -104,18 +90,37 @@ const Sidebar = ({ isOpen = true, onToggle }) => {
           <span>Labels</span>
         </a>
         <a
-          href="#"
-          className="flex items-center space-x-3 px-3 py-2 text-gray-700 hover:bg-gray-100"
+          href="/admin"
+          className={`flex items-center space-x-3 px-3 py-2 ${
+            isActive("/admin")
+              ? "bg-gray-900 text-white"
+              : "text-gray-700 hover:bg-gray-100"
+          }`}
         >
-          <i className="fas fa-bell w-5" />
-          <span>Alerts</span>
+          <i className="fas fa-shield-alt w-5" />
+          <span>Admin Panel</span>
         </a>
         <a
-          href="#"
-          className="flex items-center space-x-3 px-3 py-2 text-gray-700 hover:bg-gray-100"
+          href="/transaction-flow"
+          className={`flex items-center space-x-3 px-3 py-2 ${
+            isActive("/transaction-flow")
+              ? "bg-gray-900 text-white"
+              : "text-gray-700 hover:bg-gray-100"
+          }`}
         >
-          <i className="fas fa-history w-5" />
-          <span>Activity Log</span>
+          <i className="fas fa-random w-5" />
+          <span>Transaction Flow</span>
+        </a>
+        <a
+          href="/risk-monitor"
+          className={`flex items-center space-x-3 px-3 py-2 ${
+            isActive("/risk-monitor")
+              ? "bg-gray-900 text-white"
+              : "text-gray-700 hover:bg-gray-100"
+          }`}
+        >
+          <i className="fas fa-exclamation-triangle w-5" />
+          <span>Risk Monitor</span>
         </a>
         <a
           href="/settings"
