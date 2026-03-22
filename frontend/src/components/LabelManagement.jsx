@@ -1,15 +1,60 @@
-import React, { useState } from "react";
+import React, { useEffect, useMemo, useState } from "react";
 import Sidebar from "./Sidebar";
 import SidebarToggleButton from "./SidebarToggleButton";
 import { useSidebarToggle } from "../hooks/useSidebarToggle";
 
 const LabelManagement = () => {
   const { isSidebarOpen, toggleSidebar } = useSidebarToggle();
+
   const [isAddLabelOpen, setIsAddLabelOpen] = useState(false);
+  const [labels, setLabels] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState("");
+  const [searchTerm, setSearchTerm] = useState("");
+  const [selectedCategory, setSelectedCategory] = useState("All Entity Types");
+
+  useEffect(() => {
+    const fetchLabels = async () => {
+      try {
+        setLoading(true);
+        setError("");
+
+        const response = await fetch("http://localhost:8080/api/labels");
+        if (!response.ok) {
+          throw new Error(`Failed to fetch labels: ${response.status}`);
+        }
+
+        const data = await response.json();
+        setLabels(Array.isArray(data) ? data : []);
+      } catch (err) {
+        setError(err.message || "Failed to load labels");
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    fetchLabels();
+  }, []);
+
+  const filteredLabels = useMemo(() => {
+    return labels.filter((label) => {
+      const matchesSearch =
+        !searchTerm ||
+        label.address?.toLowerCase().includes(searchTerm.toLowerCase()) ||
+        label.labelName?.toLowerCase().includes(searchTerm.toLowerCase()) ||
+        label.entityName?.toLowerCase().includes(searchTerm.toLowerCase()) ||
+        label.category?.toLowerCase().includes(searchTerm.toLowerCase());
+
+      const matchesCategory =
+        selectedCategory === "All Entity Types" ||
+        label.category?.toLowerCase() === selectedCategory.toLowerCase();
+
+      return matchesSearch && matchesCategory;
+    });
+  }, [labels, searchTerm, selectedCategory]);
 
   return (
     <div className="min-h-screen bg-gray-50 flex flex-col">
-      {/* Top Navigation Bar */}
       <header className="bg-white border-b border-gray-300 px-4 md:px-6 py-3">
         <div className="flex items-center justify-between">
           <div className="flex items-center space-x-4">
@@ -45,14 +90,10 @@ const LabelManagement = () => {
         </div>
       </header>
 
-      {/* Main Content Area */}
       <div className="flex flex-1">
-        {/* Sidebar Navigation */}
         <Sidebar isOpen={isSidebarOpen} onToggle={toggleSidebar} />
 
-        {/* Main Label Management Content */}
         <main className="flex-1 p-4 md:p-6">
-          {/* Page Header */}
           <div className="bg-white border border-gray-300 p-4 mb-6">
             <div className="flex flex-col md:flex-row md:items-center md:justify-between space-y-3 md:space-y-0">
               <div>
@@ -75,7 +116,6 @@ const LabelManagement = () => {
             </div>
           </div>
 
-          {/* Search and Filter Controls */}
           <div className="bg-white border border-gray-300 p-4 mb-6">
             <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
               <div className="md:col-span-2">
@@ -83,6 +123,8 @@ const LabelManagement = () => {
                   <i className="fas fa-search text-gray-600 text-sm" />
                   <input
                     type="text"
+                    value={searchTerm}
+                    onChange={(e) => setSearchTerm(e.target.value)}
                     placeholder="Search by address, label, or entity type..."
                     className="flex-1 text-sm text-gray-700 bg-transparent border-none outline-none"
                   />
@@ -91,7 +133,11 @@ const LabelManagement = () => {
 
               <div className="flex items-center space-x-2 border border-gray-300 px-3 py-2 bg-white">
                 <i className="fas fa-filter text-gray-600 text-sm" />
-                <select className="flex-1 text-sm text-gray-700 bg-transparent border-none outline-none">
+                <select
+                  value={selectedCategory}
+                  onChange={(e) => setSelectedCategory(e.target.value)}
+                  className="flex-1 text-sm text-gray-700 bg-transparent border-none outline-none"
+                >
                   <option>All Entity Types</option>
                   <option>Wallet</option>
                   <option>Smart Contract</option>
@@ -103,14 +149,15 @@ const LabelManagement = () => {
             </div>
           </div>
 
-          {/* Main Labels Table */}
           <div className="bg-white border border-gray-300 mb-6">
             <div className="p-4 border-b border-gray-300 flex items-center justify-between">
               <h2 className="text-sm font-semibold text-gray-900">
                 Entity Labels
               </h2>
               <div className="flex items-center space-x-2 text-xs text-gray-600">
-                <span>Showing 1-10 of 247 labels</span>
+                <span>
+                  Showing {filteredLabels.length} of {labels.length} labels
+                </span>
               </div>
             </div>
 
@@ -147,174 +194,75 @@ const LabelManagement = () => {
                     </th>
                   </tr>
                 </thead>
+
                 <tbody className="divide-y divide-gray-200 text-xs">
-                  <tr className="hover:bg-gray-50">
-                    <td className="px-4 py-3 text-gray-900 font-mono">
-                      0x742d35Cc6634C0532925a3b844Bc9e7595f3f8a
-                    </td>
-                    <td className="px-4 py-3 text-gray-900 font-semibold">
-                      Binance Hot Wallet
-                    </td>
-                    <td className="px-4 py-3">
-                      <div className="flex items-center space-x-2">
-                        <i className="fas fa-wallet text-gray-600" />
-                        <span className="text-gray-700">Wallet</span>
-                      </div>
-                    </td>
-                    <td className="px-4 py-3 text-gray-600">
-                      2024-01-15 14:32
-                    </td>
-                    <td className="px-4 py-3">
-                      <div className="flex items-center space-x-2">
-                        <button className="text-gray-600 hover:text-gray-900">
-                          <i className="fas fa-edit" />
-                        </button>
-                        <button className="text-gray-600 hover:text-gray-900">
-                          <i className="fas fa-trash" />
-                        </button>
-                      </div>
-                    </td>
-                  </tr>
+                  {loading && (
+                    <tr>
+                      <td
+                        colSpan="5"
+                        className="px-4 py-6 text-center text-gray-500"
+                      >
+                        Loading labels...
+                      </td>
+                    </tr>
+                  )}
 
-                  <tr className="hover:bg-gray-50">
-                    <td className="px-4 py-3 text-gray-900 font-mono">
-                      0x1f9840a85d5aF5bf1D1762F925BDADdC4201F984
-                    </td>
-                    <td className="px-4 py-3 text-gray-900 font-semibold">
-                      Uniswap V3 Router
-                    </td>
-                    <td className="px-4 py-3">
-                      <div className="flex items-center space-x-2">
-                        <i className="fas fa-exchange-alt text-gray-600" />
-                        <span className="text-gray-700">DEX</span>
-                      </div>
-                    </td>
-                    <td className="px-4 py-3 text-gray-600">
-                      2024-01-14 09:18
-                    </td>
-                    <td className="px-4 py-3">
-                      <div className="flex items-center space-x-2">
-                        <button className="text-gray-600 hover:text-gray-900">
-                          <i className="fas fa-edit" />
-                        </button>
-                        <button className="text-gray-600 hover:text-gray-900">
-                          <i className="fas fa-trash" />
-                        </button>
-                      </div>
-                    </td>
-                  </tr>
+                  {!loading && error && (
+                    <tr>
+                      <td
+                        colSpan="5"
+                        className="px-4 py-6 text-center text-red-600"
+                      >
+                        {error}
+                      </td>
+                    </tr>
+                  )}
 
-                  <tr className="hover:bg-gray-50">
-                    <td className="px-4 py-3 text-gray-900 font-mono">
-                      0xa0b86991c6218b36c1d19D4a2e9Eb0cE3606eB48
-                    </td>
-                    <td className="px-4 py-3 text-gray-900 font-semibold">
-                      USDC Token Contract
-                    </td>
-                    <td className="px-4 py-3">
-                      <div className="flex items-center space-x-2">
-                        <i className="fas fa-file-contract text-gray-600" />
-                        <span className="text-gray-700">Smart Contract</span>
-                      </div>
-                    </td>
-                    <td className="px-4 py-3 text-gray-600">
-                      2024-01-13 16:45
-                    </td>
-                    <td className="px-4 py-3">
-                      <div className="flex items-center space-x-2">
-                        <button className="text-gray-600 hover:text-gray-900">
-                          <i className="fas fa-edit" />
-                        </button>
-                        <button className="text-gray-600 hover:text-gray-900">
-                          <i className="fas fa-trash" />
-                        </button>
-                      </div>
-                    </td>
-                  </tr>
+                  {!loading && !error && filteredLabels.length === 0 && (
+                    <tr>
+                      <td
+                        colSpan="5"
+                        className="px-4 py-6 text-center text-gray-500"
+                      >
+                        No labels found.
+                      </td>
+                    </tr>
+                  )}
 
-                  <tr className="hover:bg-gray-50">
-                    <td className="px-4 py-3 text-gray-900 font-mono">
-                      0x88e6A0c2dDD26FEEb64F039a2c41296FcB3f5640
-                    </td>
-                    <td className="px-4 py-3 text-gray-900 font-semibold">
-                      Arbitrum Bridge Contract
-                    </td>
-                    <td className="px-4 py-3">
-                      <div className="flex items-center space-x-2">
-                        <i className="fas fa-bridge text-gray-600" />
-                        <span className="text-gray-700">Bridge</span>
-                      </div>
-                    </td>
-                    <td className="px-4 py-3 text-gray-600">
-                      2024-01-12 11:22
-                    </td>
-                    <td className="px-4 py-3">
-                      <div className="flex items-center space-x-2">
-                        <button className="text-gray-600 hover:text-gray-900">
-                          <i className="fas fa-edit" />
-                        </button>
-                        <button className="text-gray-600 hover:text-gray-900">
-                          <i className="fas fa-trash" />
-                        </button>
-                      </div>
-                    </td>
-                  </tr>
-
-                  <tr className="hover:bg-gray-50">
-                    <td className="px-4 py-3 text-gray-900 font-mono">
-                      0x3fC91A3afd70395Cd496C647d5a6CC9D4B2b7FAD
-                    </td>
-                    <td className="px-4 py-3 text-gray-900 font-semibold">
-                      Coinbase Custody Wallet
-                    </td>
-                    <td className="px-4 py-3">
-                      <div className="flex items-center space-x-2">
-                        <i className="fas fa-wallet text-gray-600" />
-                        <span className="text-gray-700">Wallet</span>
-                      </div>
-                    </td>
-                    <td className="px-4 py-3 text-gray-600">
-                      2024-01-11 08:55
-                    </td>
-                    <td className="px-4 py-3">
-                      <div className="flex items-center space-x-2">
-                        <button className="text-gray-600 hover:text-gray-900">
-                          <i className="fas fa-edit" />
-                        </button>
-                        <button className="text-gray-600 hover:text-gray-900">
-                          <i className="fas fa-trash" />
-                        </button>
-                      </div>
-                    </td>
-                  </tr>
-
-                  <tr className="hover:bg-gray-50">
-                    <td className="px-4 py-3 text-gray-900 font-mono">
-                      0x7a250d5630B4cF539739dF2C5dAcb4c659F2488D
-                    </td>
-                    <td className="px-4 py-3 text-gray-900 font-semibold">
-                      Uniswap V2 Router
-                    </td>
-                    <td className="px-4 py-3">
-                      <div className="flex items-center space-x-2">
-                        <i className="fas fa-exchange-alt text-gray-600" />
-                        <span className="text-gray-700">DEX</span>
-                      </div>
-                    </td>
-                    <td className="px-4 py-3 text-gray-600">
-                      2024-01-10 15:30
-                    </td>
-                    <td className="px-4 py-3">
-                      <div className="flex items-center space-x-2">
-                        <button className="text-gray-600 hover:text-gray-900">
-                          <i className="fas fa-edit" />
-                        </button>
-                        <button className="text-gray-600 hover:text-gray-900">
-                          <i className="fas fa-trash" />
-                        </button>
-                      </div>
-                    </td>
-                  </tr>
+                  {!loading &&
+                    !error &&
+                    filteredLabels.map((label) => (
+                      <tr key={label.address} className="hover:bg-gray-50">
+                        <td className="px-4 py-3 text-gray-900 font-mono">
+                          {label.address}
+                        </td>
+                        <td className="px-4 py-3 text-gray-900 font-semibold">
+                          {label.labelName || "-"}
+                        </td>
+                        <td className="px-4 py-3">
+                          <div className="flex items-center space-x-2">
+                            <span className="text-gray-700">
+                              {label.category || "-"}
+                            </span>
+                          </div>
+                        </td>
+                        <td className="px-4 py-3 text-gray-600">
+                          {label.createdAt
+                            ? new Date(label.createdAt).toLocaleString()
+                            : "-"}
+                        </td>
+                        <td className="px-4 py-3">
+                          <div className="flex items-center space-x-2">
+                            <button className="text-gray-600 hover:text-gray-900">
+                              <i className="fas fa-edit" />
+                            </button>
+                            <button className="text-gray-600 hover:text-gray-900">
+                              <i className="fas fa-trash" />
+                            </button>
+                          </div>
+                        </td>
+                      </tr>
+                    ))}
                 </tbody>
               </table>
             </div>
@@ -344,9 +292,7 @@ const LabelManagement = () => {
             </div>
           </div>
 
-          {/* Two Column Layout for Label History and Bulk Import/Export */}
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-            {/* Label History Panel */}
             <div className="bg-white border border-gray-300">
               <div className="p-4 border-b border-gray-300">
                 <h2 className="text-sm font-semibold text-gray-900 flex items-center space-x-2">
@@ -368,8 +314,8 @@ const LabelManagement = () => {
                     label for 0x742d...3f8a
                   </div>
                   <div className="text-gray-500">
-                    Changed from &quot;Binance Wallet&quot; to &quot;Binance
-                    Hot Wallet&quot;
+                    Changed from &quot;Binance Wallet&quot; to &quot;Binance Hot
+                    Wallet&quot;
                   </div>
                 </div>
 
@@ -462,7 +408,6 @@ const LabelManagement = () => {
               </div>
             </div>
 
-            {/* Bulk Import/Export Section */}
             <div className="bg-white border border-gray-300">
               <div className="p-4 border-b border-gray-300">
                 <h2 className="text-sm font-semibold text-gray-900 flex items-center space-x-2">
@@ -472,7 +417,6 @@ const LabelManagement = () => {
               </div>
 
               <div className="p-4 space-y-4 text-xs">
-                {/* Import Section */}
                 <div>
                   <h3 className="font-semibold text-gray-900 mb-3">
                     Import Labels from CSV
@@ -482,9 +426,7 @@ const LabelManagement = () => {
                     <p className="text-sm text-gray-700 mb-1">
                       Drop CSV file here or click to browse
                     </p>
-                    <p className="text-gray-500">
-                      Maximum file size: 10MB
-                    </p>
+                    <p className="text-gray-500">Maximum file size: 10MB</p>
                   </div>
 
                   <div className="mt-3 flex items-center space-x-2">
@@ -495,7 +437,6 @@ const LabelManagement = () => {
                   </div>
                 </div>
 
-                {/* Template Download */}
                 <div className="border-t border-gray-200 pt-4">
                   <h3 className="font-semibold text-gray-900 mb-3">
                     CSV Template
@@ -510,7 +451,6 @@ const LabelManagement = () => {
                   </p>
                 </div>
 
-                {/* Export Section */}
                 <div className="border-t border-gray-200 pt-4">
                   <h3 className="font-semibold text-gray-900 mb-3">
                     Export Current Labels
@@ -527,7 +467,6 @@ const LabelManagement = () => {
                   </div>
                 </div>
 
-                {/* Recent Import History */}
                 <div className="border-t border-gray-200 pt-4">
                   <h3 className="font-semibold text-gray-900 mb-3">
                     Recent Imports
@@ -540,9 +479,7 @@ const LabelManagement = () => {
                           <div className="font-semibold text-gray-900">
                             exchange_wallets_2024.csv
                           </div>
-                          <div className="text-gray-500">
-                            45 labels imported
-                          </div>
+                          <div className="text-gray-500">45 labels imported</div>
                         </div>
                       </div>
                       <div className="text-gray-500">2 days ago</div>
@@ -555,9 +492,7 @@ const LabelManagement = () => {
                           <div className="font-semibold text-gray-900">
                             dex_contracts.csv
                           </div>
-                          <div className="text-gray-500">
-                            23 labels imported
-                          </div>
+                          <div className="text-gray-500">23 labels imported</div>
                         </div>
                       </div>
                       <div className="text-gray-500">1 week ago</div>
@@ -570,7 +505,6 @@ const LabelManagement = () => {
         </main>
       </div>
 
-      {/* Add New Label Modal */}
       {isAddLabelOpen && (
         <div
           className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4"
@@ -628,9 +562,7 @@ const LabelManagement = () => {
                   <option value="">Select entity type...</option>
                   <option value="wallet">Wallet</option>
                   <option value="contract">Smart Contract</option>
-                  <option value="dex">
-                    DEX (Decentralized Exchange)
-                  </option>
+                  <option value="dex">DEX (Decentralized Exchange)</option>
                   <option value="bridge">Bridge</option>
                   <option value="exchange">Centralized Exchange</option>
                   <option value="defi">DeFi Protocol</option>
@@ -660,10 +592,7 @@ const LabelManagement = () => {
                   id="verifiedEntity"
                   className="w-4 h-4 border-gray-300"
                 />
-                <label
-                  htmlFor="verifiedEntity"
-                  className="text-gray-700"
-                >
+                <label htmlFor="verifiedEntity" className="text-gray-700">
                   Mark as verified entity
                 </label>
               </div>
