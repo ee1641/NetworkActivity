@@ -70,4 +70,19 @@ public class FlowController {
 
         return flowService.getTopHotspots(startDate, endDate, safeLimit);
     }
+
+    @GetMapping("/large-transactions")
+    public List<Transaction> largeTransactions(
+            @RequestParam(defaultValue = "1000") Float minValue,
+            @RequestParam(required = false) String start,
+            @RequestParam(required = false) String end,
+            @RequestParam(defaultValue = "10") int limit) {
+
+        OffsetDateTime endDate = end != null ? OffsetDateTime.parse(end) : OffsetDateTime.now();
+        OffsetDateTime startDate = start != null ? OffsetDateTime.parse(start) : endDate.minusHours(24);
+
+        int safeLimit = Math.max(1, Math.min(limit, 100));
+
+        return flowService.getLargeTransactions(minValue, startDate, endDate, safeLimit);
+    }
 }

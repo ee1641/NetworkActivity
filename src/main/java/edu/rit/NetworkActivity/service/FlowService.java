@@ -105,17 +105,13 @@ public class FlowService {
                 .distinct()
                 .count();
 
-        Map<String, Double> senderTotals = new HashMap<>();
-        Map<String, Double> receiverTotals = new HashMap<>();
+        Map<String, List<Transaction>> senderGroups = txs.stream()
+                .filter(tx -> tx.getFromAddress() != null)
+                .collect(Collectors.groupingBy(Transaction::getFromAddress));
 
-        for (Transaction tx : txs) {
-            if (tx.getFromAddress() != null && tx.getValue() != null) {
-                senderTotals.merge(tx.getFromAddress(), tx.getValue().doubleValue(), Double::sum);
-            }
-            if (tx.getToAddress() != null && tx.getValue() != null) {
-                receiverTotals.merge(tx.getToAddress(), tx.getValue().doubleValue(), Double::sum);
-            }
-        }
+        Map<String, List<Transaction>> receiverGroups = txs.stream()
+                .filter(tx -> tx.getToAddress() != null)
+                .collect(Collectors.groupingBy(Transaction::getToAddress));
 
         FlowAggregateDto dto = new FlowAggregateDto();
         dto.setTransactionCount(txs.size());
@@ -123,8 +119,8 @@ public class FlowService {
         dto.setTotalGasFees(totalGas);
         dto.setUniqueSenders(uniqueSenders);
         dto.setUniqueReceivers(uniqueReceivers);
-        dto.setTopSenders(topMap(senderTotals));
-        dto.setTopReceivers(topMap(receiverTotals));
+        dto.setTopSenders(topMap(senderGroups));
+        dto.setTopReceivers(topMap(receiverGroups));
 
         return dto;
     }
@@ -170,16 +166,28 @@ public class FlowService {
                 .collect(Collectors.toList());
     }
 
-    private List<Map<String, Object>> topMap(Map<String, Double> totals) {
-        return totals.entrySet().stream()
-                .sorted(Map.Entry.<String, Double>comparingByValue().reversed())
-                .limit(10)
+    public List<Transaction> getLargeTransactions(Float minValue, OffsetDateTime start, OffsetDateTime end, int limit) {
+        return transactionRepository.findByValueGreaterThanEqualAndTimestampBetween(minValue, start, end).stream()
+                .sorted(Comparator.comparing(Transaction::getValue).reversed())
+                .limit(limit)
+                .collect(Collectors.toList());
+    }
+
+    private List<Map<String, Object>> topMap(Map<String, List<Transaction>> groupedEntries) {
+        return groupedEntries.entrySet().stream()
                 .map(e -> {
+                    double totalValue = e.getValue().stream()
+                            .mapToDouble(tx -> tx.getValue() != null ? tx.getValue().doubleValue() : 0.0)
+                            .sum();
+
                     Map<String, Object> row = new LinkedHashMap<>();
                     row.put("address", e.getKey());
-                    row.put("value", e.getValue());
+                    row.put("value", totalValue);
+                    row.put("transactionCount", e.getValue().size());
                     return row;
                 })
+                .sorted((a, b) -> Double.compare((Double) b.get("value"), (Double) a.get("value")))
+                .limit(10)
                 .collect(Collectors.toList());
     }
 }

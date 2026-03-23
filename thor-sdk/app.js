@@ -17,8 +17,10 @@ export function createApp(thor) {
         bestBlockNumber: best.number ?? null,
         bestBlockId: best.id ?? null,
         bestBlockTimestamp: best.timestamp ?? null,
-        txCount: Array.isArray(best.transactions) ? best.transactions.length : 0,
-        gasUsed: best.gasUsed ?? 0
+        txCount: Array.isArray(best.transactions)
+          ? best.transactions.length
+          : 0,
+        gasUsed: best.gasUsed ?? 0,
       });
     } catch (e) {
       res.status(500).json({ error: String(e) });
@@ -29,8 +31,14 @@ export function createApp(thor) {
   app.get("/block/:id", async (req, res) => {
     try {
       const { id } = req.params;
+      const { expanded } = req.query;
       const revision = id.startsWith("0x") ? id : parseInt(id, 10);
-      const block = await thor.blocks.getBlockCompressed(revision);
+
+      const block =
+        expanded === "true"
+          ? await thor.blocks.getBlockExpanded(revision)
+          : await thor.blocks.getBlockCompressed(revision);
+
       if (!block) return res.status(404).json({ error: "Block not found" });
       res.json(block);
     } catch (e) {

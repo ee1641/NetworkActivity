@@ -16,8 +16,8 @@ public class VeChainThorClient {
 
     public VeChainThorClient() {
         SimpleClientHttpRequestFactory factory = new SimpleClientHttpRequestFactory();
-        factory.setConnectTimeout(5_000);   // 5 s — fail fast if thor-sdk is down
-        factory.setReadTimeout(10_000);     // 10 s — give the VeChain node time to respond
+        factory.setConnectTimeout(5_000); // 5 s — fail fast if thor-sdk is down
+        factory.setReadTimeout(10_000); // 10 s — give the VeChain node time to respond
         this.restTemplate = new RestTemplate(factory);
     }
 
@@ -25,8 +25,7 @@ public class VeChainThorClient {
     public VeChainSummaryDto getSummary() {
         return restTemplate.getForObject(
                 thorServiceBaseUrl + "/metrics/summary",
-                VeChainSummaryDto.class
-        );
+                VeChainSummaryDto.class);
     }
 
     /**
@@ -34,11 +33,22 @@ public class VeChainThorClient {
      * Returns null when the block is not found.
      */
     public Map<String, Object> getBlock(String numberOrId) {
+        return fetchBlock(numberOrId, false);
+    }
+
+    /**
+     * Fetches a full block including expanded transaction details.
+     */
+    public Map<String, Object> getBlockExpanded(String numberOrId) {
+        return fetchBlock(numberOrId, true);
+    }
+
+    private Map<String, Object> fetchBlock(String numberOrId, boolean expanded) {
         try {
-            return restTemplate.getForObject(
-                    thorServiceBaseUrl + "/block/" + numberOrId,
-                    Map.class
-            );
+            String url = thorServiceBaseUrl + "/block/" + numberOrId + (expanded ? "?expanded=true" : "");
+            @SuppressWarnings("unchecked")
+            Map<String, Object> result = restTemplate.getForObject(url, Map.class);
+            return result;
         } catch (HttpClientErrorException.NotFound e) {
             return null;
         }
@@ -50,10 +60,11 @@ public class VeChainThorClient {
      */
     public Map<String, Object> getTransaction(String txId) {
         try {
-            return restTemplate.getForObject(
+            @SuppressWarnings("unchecked")
+            Map<String, Object> result = restTemplate.getForObject(
                     thorServiceBaseUrl + "/tx/" + txId,
-                    Map.class
-            );
+                    Map.class);
+            return result;
         } catch (HttpClientErrorException.NotFound e) {
             return null;
         }
@@ -63,9 +74,10 @@ public class VeChainThorClient {
      * Fetches VET/VTHO account details for a VeChain address.
      */
     public Map<String, Object> getAccount(String address) {
-        return restTemplate.getForObject(
+        @SuppressWarnings("unchecked")
+        Map<String, Object> result = restTemplate.getForObject(
                 thorServiceBaseUrl + "/account/" + address,
-                Map.class
-        );
+                Map.class);
+        return result;
     }
 }

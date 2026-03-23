@@ -1,10 +1,33 @@
-import React from "react";
+import React, { useState, useEffect } from "react";
 import Sidebar from "./Sidebar";
 import SidebarToggleButton from "./SidebarToggleButton";
 import { useSidebarToggle } from "../hooks/useSidebarToggle";
+import * as api from "../utils/api";
 
 const Dashboard = () => {
   const { isSidebarOpen, toggleSidebar } = useSidebarToggle();
+  const [stats, setStats] = useState(null);
+  const [largeTxs, setLargeTxs] = useState([]);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    const fetchData = async () => {
+      try {
+        setLoading(true);
+        const [agg, txs] = await Promise.all([
+          api.fetchAggregate(),
+          api.fetchLargeTransactions(100, null, null, 5),
+        ]);
+        setStats(agg);
+        setLargeTxs(txs);
+      } catch (err) {
+        console.error("Dashboard data fetch error:", err);
+      } finally {
+        setLoading(false);
+      }
+    };
+    fetchData();
+  }, []);
 
   return (
     <div className="bg-gray-50 min-h-screen flex flex-col">
@@ -104,32 +127,31 @@ const Dashboard = () => {
 
               <div className="space-y-3">
                 <div className="flex items-center justify-between">
-                  <span className="text-xs text-gray-600">Inflow</span>
+                  <span className="text-xs text-gray-600">
+                    Total Transferred
+                  </span>
                   <div className="flex items-center space-x-2">
                     <span className="text-lg font-bold text-gray-900">
-                      $2.4M
+                      ${((stats?.totalTransferredValue || 0) / 1000).toFixed(1)}
+                      K
                     </span>
-                    <i className="fas fa-arrow-up text-gray-700 text-xs" />
-                    <span className="text-xs text-gray-600">12.5%</span>
                   </div>
                 </div>
 
                 <div className="flex items-center justify-between">
-                  <span className="text-xs text-gray-600">Outflow</span>
+                  <span className="text-xs text-gray-600">Gas Fees</span>
                   <div className="flex items-center space-x-2">
                     <span className="text-lg font-bold text-gray-900">
-                      $1.8M
+                      {(stats?.totalGasFees || 0).toFixed(4)}
                     </span>
-                    <i className="fas fa-arrow-down text-gray-700 text-xs" />
-                    <span className="text-xs text-gray-600">8.3%</span>
                   </div>
                 </div>
 
                 <div className="pt-3 border-t border-gray-200">
                   <div className="flex items-center justify-between">
-                    <span className="text-xs text-gray-600">Net Flow</span>
+                    <span className="text-xs text-gray-600">Transactions</span>
                     <span className="text-lg font-bold text-gray-900">
-                      +$600K
+                      {stats?.transactionCount || 0}
                     </span>
                   </div>
                 </div>
@@ -203,10 +225,7 @@ const Dashboard = () => {
                     <span className="font-semibold text-gray-900">124</span>
                   </div>
                   <div className="w-full bg-gray-200 h-2">
-                    <div
-                      className="bg-gray-700 h-2"
-                      style={{ width: "35%" }}
-                    />
+                    <div className="bg-gray-700 h-2" style={{ width: "35%" }} />
                   </div>
 
                   <div className="flex items-center justify-between text-xs">
@@ -214,10 +233,7 @@ const Dashboard = () => {
                     <span className="font-semibold text-gray-900">456</span>
                   </div>
                   <div className="w-full bg-gray-200 h-2">
-                    <div
-                      className="bg-gray-500 h-2"
-                      style={{ width: "54%" }}
-                    />
+                    <div className="bg-gray-500 h-2" style={{ width: "54%" }} />
                   </div>
 
                   <div className="flex items-center justify-between text-xs">
@@ -225,10 +241,7 @@ const Dashboard = () => {
                     <span className="font-semibold text-gray-900">267</span>
                   </div>
                   <div className="w-full bg-gray-200 h-2">
-                    <div
-                      className="bg-gray-400 h-2"
-                      style={{ width: "31%" }}
-                    />
+                    <div className="bg-gray-400 h-2" style={{ width: "31%" }} />
                   </div>
                 </div>
               </div>
@@ -298,62 +311,40 @@ const Dashboard = () => {
 
               <div className="flex items-center justify-between mb-4">
                 <h3 className="text-sm font-semibold text-gray-900">
-                  Recent Activity
+                  Recent Large Activity
                 </h3>
                 <i className="fas fa-ellipsis-v text-gray-400" />
               </div>
 
               <div className="space-y-3">
-                <div className="flex items-start space-x-3 pb-3 border-b border-gray-200">
-                  <div className="w-8 h-8 bg-gray-300 flex items-center justify-center flex-shrink-0">
-                    <i className="fas fa-arrow-right text-gray-700 text-xs" />
+                {largeTxs.length === 0 ? (
+                  <div className="text-xs text-gray-500 py-4 text-center">
+                    No recent large activity
                   </div>
-                  <div className="flex-1 min-w-0">
-                    <div className="text-xs font-semibold text-gray-900 mb-1">
-                      Transfer: 125.5 ETH
+                ) : (
+                  largeTxs.map((tx) => (
+                    <div
+                      key={tx.id}
+                      className="flex items-start space-x-3 pb-3 border-b border-gray-200"
+                    >
+                      <div className="w-8 h-8 bg-gray-300 flex items-center justify-center flex-shrink-0">
+                        <i className="fas fa-arrow-right text-gray-700 text-xs" />
+                      </div>
+                      <div className="flex-1 min-w-0">
+                        <div className="text-xs font-semibold text-gray-900 mb-1">
+                          Transfer: {tx.value?.toLocaleString()} VET
+                        </div>
+                        <div className="text-xs text-gray-600 truncate">
+                          {tx.fromAddress?.substring(0, 6)}... →{" "}
+                          {tx.toAddress?.substring(0, 6)}...
+                        </div>
+                        <div className="text-xs text-gray-500 mt-1">
+                          Block: {tx.blockNumber}
+                        </div>
+                      </div>
                     </div>
-                    <div className="text-xs text-gray-600 truncate">
-                      0x742d...3f8a → 0x9c1e...7b2d
-                    </div>
-                    <div className="text-xs text-gray-500 mt-1">
-                      2 minutes ago
-                    </div>
-                  </div>
-                </div>
-
-                <div className="flex items-start space-x-3 pb-3 border-b border-gray-200">
-                  <div className="w-8 h-8 bg-gray-300 flex items-center justify-center flex-shrink-0">
-                    <i className="fas fa-arrow-right text-gray-700 text-xs" />
-                  </div>
-                  <div className="flex-1 min-w-0">
-                    <div className="text-xs font-semibold text-gray-900 mb-1">
-                      Transfer: 50.2 BTC
-                    </div>
-                    <div className="text-xs text-gray-600 truncate">
-                      0x1a2b...4c5d → 0x6e7f...8g9h
-                    </div>
-                    <div className="text-xs text-gray-500 mt-1">
-                      8 minutes ago
-                    </div>
-                  </div>
-                </div>
-
-                <div className="flex items-start space-x-3 pb-3 border-b border-gray-200">
-                  <div className="w-8 h-8 bg-gray-300 flex items-center justify-center flex-shrink-0">
-                    <i className="fas fa-arrow-right text-gray-700 text-xs" />
-                  </div>
-                  <div className="flex-1 min-w-0">
-                    <div className="text-xs font-semibold text-gray-900 mb-1">
-                      Transfer: 1,000 USDT
-                    </div>
-                    <div className="text-xs text-gray-600 truncate">
-                      0x3d4e...5f6g → 0x7h8i...9j0k
-                    </div>
-                    <div className="text-xs text-gray-500 mt-1">
-                      15 minutes ago
-                    </div>
-                  </div>
-                </div>
+                  ))
+                )}
 
                 <button className="w-full text-xs text-gray-700 py-2 border border-gray-300 hover:bg-gray-50">
                   View All Activity

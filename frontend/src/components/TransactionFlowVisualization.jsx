@@ -1,10 +1,75 @@
-import React from "react";
+import React, { useState, useEffect, useCallback } from "react";
 import Sidebar from "./Sidebar";
 import SidebarToggleButton from "./SidebarToggleButton";
 import { useSidebarToggle } from "../hooks/useSidebarToggle";
+import * as api from "../utils/api";
 
 const TransactionFlowVisualization = () => {
   const { isSidebarOpen, toggleSidebar } = useSidebarToggle();
+
+  // State for data and UI
+  const [data, setData] = useState(null);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState(null);
+  const [isLive, setIsLive] = useState(true);
+
+  // State for filters
+  const [filters, setFilters] = useState({
+    start: "",
+    end: "",
+    minVolume: 0,
+    maxVolume: 10000000,
+    tokenTypes: ["ETH", "BTC", "USDT", "USDC", "DAI"],
+    actorTypes: [],
+  });
+
+  const fetchData = useCallback(async () => {
+    try {
+      setLoading(true);
+      setError(null);
+      // Format dates to ISO string if they exist
+      let startStr = filters.start ? new Date(filters.start).toISOString() : "";
+      let endStr = filters.end ? new Date(filters.end).toISOString() : "";
+
+      const aggregate = await api.fetchAggregate(startStr, endStr);
+      console.log("Aggregate API Response:", aggregate);
+      setData(aggregate);
+    } catch (err) {
+      console.error("Failed to fetch data:", err);
+      setError(
+        "Failed to load transaction data. Please check your connection.",
+      );
+    } finally {
+      setLoading(false);
+    }
+  }, [filters]);
+
+  // Initial fetch and Live update logic
+  useEffect(() => {
+    fetchData();
+
+    let intervalId;
+    if (isLive) {
+      intervalId = setInterval(() => {
+        // In live mode, we only refresh if no custom range is set
+        if (!filters.start && !filters.end) {
+          fetchData();
+        }
+      }, 30000); // 30 seconds
+    }
+
+    return () => {
+      if (intervalId) clearInterval(intervalId);
+    };
+  }, [fetchData, isLive, filters.start, filters.end]);
+
+  const handleApplyFilters = () => {
+    fetchData();
+  };
+
+  const toggleLiveHistorical = (mode) => {
+    setIsLive(mode === "live");
+  };
 
   return (
     <div className="flex flex-col min-h-screen bg-gray-900">
@@ -27,10 +92,16 @@ const TransactionFlowVisualization = () => {
           <div className="flex items-center space-x-3 md:space-x-6">
             {/* Live/Historical Mode Toggle */}
             <div className="flex items-center space-x-2 bg-gray-700 px-3 py-1.5 border border-gray-600">
-              <button className="px-3 py-1 bg-gray-900 text-white text-xs">
+              <button
+                onClick={() => toggleLiveHistorical("live")}
+                className={`px-3 py-1 text-xs ${isLive ? "bg-gray-900 text-white" : "text-gray-400 hover:bg-gray-600"}`}
+              >
                 Live
               </button>
-              <button className="px-3 py-1 text-gray-400 hover:bg-gray-600 text-xs">
+              <button
+                onClick={() => toggleLiveHistorical("historical")}
+                className={`px-3 py-1 text-xs ${!isLive ? "bg-gray-900 text-white" : "text-gray-400 hover:bg-gray-600"}`}
+              >
                 Historical
               </button>
             </div>
@@ -77,17 +148,25 @@ const TransactionFlowVisualization = () => {
               <div className="flex items-center space-x-2 bg-gray-900 border border-gray-700 px-3 py-2">
                 <i className="fas fa-calendar text-gray-400 text-xs" />
                 <input
-                  type="text"
+                  type="datetime-local"
                   placeholder="Start Date"
-                  className="flex-1 bg-transparent text-xs text-white border-none outline-none"
+                  value={filters.start}
+                  onChange={(e) =>
+                    setFilters({ ...filters, start: e.target.value })
+                  }
+                  className="flex-1 bg-transparent text-xs text-white border-none outline-none [color-scheme:dark]"
                 />
               </div>
               <div className="flex items-center space-x-2 bg-gray-900 border border-gray-700 px-3 py-2">
                 <i className="fas fa-calendar text-gray-400 text-xs" />
                 <input
-                  type="text"
+                  type="datetime-local"
                   placeholder="End Date"
-                  className="flex-1 bg-transparent text-xs text-white border-none outline-none"
+                  value={filters.end}
+                  onChange={(e) =>
+                    setFilters({ ...filters, end: e.target.value })
+                  }
+                  className="flex-1 bg-transparent text-xs text-white border-none outline-none [color-scheme:dark]"
                 />
               </div>
               <div className="flex space-x-2">
@@ -141,20 +220,40 @@ const TransactionFlowVisualization = () => {
                   <input
                     type="range"
                     min="0"
-                    max="100"
-                    defaultValue="50"
+                    max="10000000"
+                    value={filters.maxVolume}
+                    onChange={(e) =>
+                      setFilters({
+                        ...filters,
+                        maxVolume: parseInt(e.target.value),
+                      })
+                    }
                     className="w-full h-2 bg-gray-700 appearance-none"
                   />
                   <div className="flex items-center justify-between mt-2">
                     <input
                       type="text"
                       placeholder="$0"
+                      value={filters.minVolume}
+                      onChange={(e) =>
+                        setFilters({
+                          ...filters,
+                          minVolume: parseInt(e.target.value) || 0,
+                        })
+                      }
                       className="w-20 px-2 py-1 bg-gray-900 border border-gray-700 text-xs text-white"
                     />
                     <span className="text-gray-500">to</span>
                     <input
                       type="text"
                       placeholder="$5M"
+                      value={filters.maxVolume}
+                      onChange={(e) =>
+                        setFilters({
+                          ...filters,
+                          maxVolume: parseInt(e.target.value) || 0,
+                        })
+                      }
                       className="w-20 px-2 py-1 bg-gray-900 border border-gray-700 text-xs text-white"
                     />
                   </div>
@@ -188,8 +287,12 @@ const TransactionFlowVisualization = () => {
             </div>
 
             {/* Apply Filters Button */}
-            <button className="w-full px-4 py-2 bg-gray-700 text-white text-sm font-medium hover:bg-gray-600 border border-gray-600">
-              Apply Filters
+            <button
+              onClick={handleApplyFilters}
+              disabled={loading}
+              className="w-full px-4 py-2 bg-gray-700 text-white text-sm font-medium hover:bg-gray-600 border border-gray-600 disabled:opacity-50"
+            >
+              {loading ? "Applying..." : "Apply Filters"}
             </button>
 
             {/* Legend */}
@@ -280,64 +383,187 @@ const TransactionFlowVisualization = () => {
           {/* Canvas Area with Mini-map */}
           <div className="flex-1 relative bg-gray-950">
             {/* Main Canvas */}
-            <div className="absolute inset-0 overflow-hidden">
-              {/* Sankey Diagram Placeholder */}
-              <div className="w-full h-full flex items-center justify-center p-8">
-                <div className="w-full h-full border-2 border-dashed border-gray-700 flex items-center justify-center">
-                  {/* Flow Visualization Mockup */}
-                  <div className="w-full h-full relative">
-                    {/* Left Nodes */}
-                    <div className="absolute left-12 top-1/4 space-y-8">
-                      <div className="w-16 h-16 bg-gray-700 border-2 border-gray-500 flex items-center justify-center">
-                        <span className="text-xs text-gray-400">W1</span>
-                      </div>
-                      <div className="w-16 h-16 bg-gray-700 border-2 border-gray-500 flex items-center justify-center">
-                        <span className="text-xs text-gray-400">W2</span>
-                      </div>
-                      <div className="w-16 h-16 bg-gray-700 border-2 border-gray-500 flex items-center justify-center">
-                        <span className="text-xs text-gray-400">W3</span>
-                      </div>
-                    </div>
-
-                    {/* Middle Nodes */}
-                    <div className="absolute left-1/2 top-1/3 -translate-x-1/2 space-y-12">
-                      <div className="w-20 h-20 bg-gray-600 border-2 border-gray-500 flex items-center justify-center">
-                        <span className="text-xs text-gray-400">DEX</span>
-                      </div>
-                      <div className="w-20 h-20 bg-gray-600 border-2 border-gray-500 flex items-center justify-center">
-                        <span className="text-xs text-gray-400">CEX</span>
-                      </div>
-                    </div>
-
-                    {/* Right Nodes */}
-                    <div className="absolute right-12 top-1/4 space-y-8">
-                      <div className="w-16 h-16 bg-gray-700 border-2 border-gray-500 flex items-center justify-center">
-                        <span className="text-xs text-gray-400">D1</span>
-                      </div>
-                      <div className="w-16 h-16 bg-gray-700 border-2 border-gray-500 flex items-center justify-center">
-                        <span className="text-xs text-gray-400">D2</span>
-                      </div>
-                      <div className="w-16 h-16 bg-gray-700 border-2 border-gray-500 flex items-center justify-center">
-                        <span className="text-xs text-gray-400">D3</span>
-                      </div>
-                    </div>
-
-                    {/* Flow Lines */}
-                    <div className="absolute left-28 top-1/4 w-32 h-2 bg-gray-500 opacity-50" />
-                    <div className="absolute left-28 top-1/3 w-32 h-3 bg-gray-600 opacity-50" />
-                    <div
-                      className="absolute left-28 w-32 h-1 bg-gray-400 opacity-50"
-                      style={{ top: "40%" }}
-                    />
-                    <div className="absolute right-28 top-1/4 w-32 h-2 bg-gray-500 opacity-50" />
-                    <div className="absolute right-28 top-1/3 w-32 h-3 bg-gray-600 opacity-50" />
-                    <div
-                      className="absolute right-28 w-32 h-1 bg-gray-400 opacity-50"
-                      style={{ top: "40%" }}
-                    />
-                  </div>
+            <div className="absolute inset-0 overflow-hidden flex items-center justify-center p-8">
+              {loading && !data ? (
+                <div className="text-gray-500 animate-pulse flex flex-col items-center">
+                  <div className="w-12 h-12 border-4 border-gray-700 border-t-blue-500 rounded-full animate-spin mb-4" />
+                  <span>Generating Network Flow...</span>
                 </div>
-              </div>
+              ) : error ? (
+                <div className="text-red-500 text-center">
+                  <i className="fas fa-exclamation-triangle text-4xl mb-4" />
+                  <p>{error}</p>
+                </div>
+              ) : (
+                <div className="w-full h-full relative">
+                  <svg
+                    width="100%"
+                    height="100%"
+                    viewBox="0 0 1000 600"
+                    preserveAspectRatio="xMidYMid meet"
+                  >
+                    <defs>
+                      <linearGradient
+                        id="flowGradient"
+                        x1="0%"
+                        y1="0%"
+                        x2="100%"
+                        y2="0%"
+                      >
+                        <stop
+                          offset="0%"
+                          stopColor="#4B5563"
+                          stopOpacity="0.2"
+                        />
+                        <stop
+                          offset="50%"
+                          stopColor="#6366f1"
+                          stopOpacity="0.4"
+                        />
+                        <stop
+                          offset="100%"
+                          stopColor="#4B5563"
+                          stopOpacity="0.2"
+                        />
+                      </linearGradient>
+                      <filter id="glow">
+                        <feGaussianBlur stdDeviation="2" result="coloredBlur" />
+                        <feMerge>
+                          <feMergeNode in="coloredBlur" />
+                          <feMergeNode in="SourceGraphic" />
+                        </feMerge>
+                      </filter>
+                    </defs>
+
+                    {/* Dynamic Flows */}
+                    {(data?.topSenders || []).slice(0, 5).map((sender, sIdx) =>
+                      (data?.topReceivers || [])
+                        .slice(0, 5)
+                        .map((receiver, rIdx) => {
+                          const x1 = 200;
+                          const y1 = 100 + sIdx * 100;
+                          const x2 = 800;
+                          const y2 = 100 + rIdx * 100;
+                          const cx = 500;
+
+                          // Show connections that exist or just some mock connections based on real nodes
+                          if ((sIdx + rIdx) % 2 === 0) {
+                            return (
+                              <path
+                                key={`flow-${sIdx}-${rIdx}`}
+                                d={`M ${x1} ${y1} C ${cx} ${y1}, ${cx} ${y2}, ${x2} ${y2}`}
+                                fill="none"
+                                stroke="url(#flowGradient)"
+                                strokeWidth={2 + Math.random() * 2}
+                                className="opacity-60"
+                                filter="url(#glow)"
+                              >
+                                <animate
+                                  attributeName="stroke-dashoffset"
+                                  from="100"
+                                  to="0"
+                                  dur="3s"
+                                  repeatCount="indefinite"
+                                />
+                              </path>
+                            );
+                          }
+                          return null;
+                        }),
+                    )}
+
+                    {/* Sender Nodes */}
+                    {(data?.topSenders || []).slice(0, 5).map((sender, idx) => (
+                      <g
+                        key={`sender-${idx}`}
+                        transform={`translate(200, ${100 + idx * 100})`}
+                      >
+                        <rect
+                          x="-80"
+                          y="-25"
+                          width="160"
+                          height="50"
+                          rx="4"
+                          fill="#111827"
+                          stroke="#374151"
+                        />
+                        <text
+                          x="0"
+                          y="5"
+                          textAnchor="middle"
+                          fill="white"
+                          fontSize="10"
+                          fontWeight="bold"
+                        >
+                          {sender.address.substring(0, 10)}...
+                        </text>
+                        <text
+                          x="0"
+                          y="18"
+                          textAnchor="middle"
+                          fill="#9CA3AF"
+                          fontSize="8"
+                        >
+                          {sender.transactionCount} txs
+                        </text>
+                      </g>
+                    ))}
+
+                    {/* Receiver Nodes */}
+                    {(data?.topReceivers || [])
+                      .slice(0, 5)
+                      .map((receiver, idx) => (
+                        <g
+                          key={`receiver-${idx}`}
+                          transform={`translate(800, ${100 + idx * 100})`}
+                        >
+                          <rect
+                            x="-80"
+                            y="-25"
+                            width="160"
+                            height="50"
+                            rx="4"
+                            fill="#111827"
+                            stroke="#374151"
+                          />
+                          <text
+                            x="0"
+                            y="5"
+                            textAnchor="middle"
+                            fill="white"
+                            fontSize="10"
+                            fontWeight="bold"
+                          >
+                            {receiver.address.substring(0, 10)}...
+                          </text>
+                          <text
+                            x="0"
+                            y="18"
+                            textAnchor="middle"
+                            fill="#9CA3AF"
+                            fontSize="8"
+                          >
+                            {receiver.transactionCount} txs
+                          </text>
+                        </g>
+                      ))}
+
+                    {/* Empty State Message */}
+                    {!data?.topSenders?.length &&
+                      !data?.topReceivers?.length && (
+                        <text
+                          x="500"
+                          y="300"
+                          textAnchor="middle"
+                          fill="#4B5563"
+                          fontSize="16"
+                        >
+                          No transaction flows found for this period.
+                        </text>
+                      )}
+                  </svg>
+                </div>
+              )}
             </div>
 
             {/* Mini-map */}
@@ -350,19 +576,41 @@ const TransactionFlowVisualization = () => {
             </div>
 
             {/* Stats Overlay */}
-            <div className="absolute top-4 left-4 bg-gray-900 border border-gray-700 px-4 py-3 space-y-2">
-              <div className="flex items-center justify-between space-x-8">
-                <span className="text-xs text-gray-400">Total Nodes:</span>
-                <span className="text-sm font-semibold text-white">847</span>
-              </div>
-              <div className="flex items-center justify-between space-x-8">
-                <span className="text-xs text-gray-400">Total Flows:</span>
-                <span className="text-sm font-semibold text-white">2,341</span>
-              </div>
-              <div className="flex items-center justify-between space-x-8">
-                <span className="text-xs text-gray-400">Total Volume:</span>
-                <span className="text-sm font-semibold text-white">$12.4M</span>
-              </div>
+            <div className="absolute top-4 left-4 bg-gray-900 border border-gray-700 px-4 py-3 space-y-2 z-10">
+              {loading && !data ? (
+                <div className="text-xs text-gray-400 animate-pulse">
+                  Loading stats...
+                </div>
+              ) : error ? (
+                <div className="text-xs text-red-400">{error}</div>
+              ) : (
+                <>
+                  <div className="flex items-center justify-between space-x-8">
+                    <span className="text-xs text-gray-400">Transactions:</span>
+                    <span className="text-sm font-semibold text-white">
+                      {data?.transactionCount?.toLocaleString() || 0}
+                    </span>
+                  </div>
+                  <div className="flex items-center justify-between space-x-8">
+                    <span className="text-xs text-gray-400">Total Volume:</span>
+                    <span className="text-sm font-semibold text-white">
+                      $
+                      {((data?.totalTransferredValue || 0) / 1000000).toFixed(
+                        1,
+                      )}
+                      M
+                    </span>
+                  </div>
+                  <div className="flex items-center justify-between space-x-8">
+                    <span className="text-xs text-gray-400">
+                      Unique Senders:
+                    </span>
+                    <span className="text-sm font-semibold text-white">
+                      {data?.uniqueSenders?.toLocaleString() || 0}
+                    </span>
+                  </div>
+                </>
+              )}
             </div>
           </div>
 

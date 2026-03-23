@@ -1,10 +1,33 @@
-import React from "react";
+import React, { useState, useEffect } from "react";
 import Sidebar from "./Sidebar";
 import SidebarToggleButton from "./SidebarToggleButton";
 import { useSidebarToggle } from "../hooks/useSidebarToggle";
+import * as api from "../utils/api";
 
 const TopHotspots = () => {
   const { isSidebarOpen, toggleSidebar } = useSidebarToggle();
+  const [hotspots, setHotspots] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState(null);
+  const [timeRange, setTimeRange] = useState("24h");
+
+  const fetchHotspots = async () => {
+    try {
+      setLoading(true);
+      const data = await api.fetchHotspots();
+      setHotspots(data);
+      setError(null);
+    } catch (err) {
+      console.error("Error fetching hotspots:", err);
+      setError("Failed to load hotspots data.");
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  useEffect(() => {
+    fetchHotspots();
+  }, []);
 
   return (
     <div className="min-h-screen bg-gray-50 flex flex-col">
@@ -166,581 +189,104 @@ const TopHotspots = () => {
 
           {/* Top Hotspots List */}
           <div className="space-y-4">
-            {/* Hotspot 1 - Critical */}
-            <div className="bg-white border border-gray-300 p-5 hover:shadow-lg transition-shadow">
-              <div className="flex flex-col lg:flex-row lg:items-center lg:justify-between space-y-4 lg:space-y-0">
-                <div className="flex items-start space-x-4 flex-1">
-                  <div className="flex-shrink-0">
-                    <div className="w-12 h-12 bg-gray-900 flex items-center justify-center text-white font-bold text-lg">
-                      1
-                    </div>
-                  </div>
-
-                  <div className="flex-1 min-w-0">
-                    <div className="flex items-center space-x-3 mb-2">
-                      <h3 className="text-base font-semibold text-gray-900">
-                        UniswapV3 Router
-                      </h3>
-                      <div className="px-2 py-1 bg-gray-900 text-white text-xs">
-                        Critical
-                      </div>
-                      <div className="px-2 py-1 bg-gray-200 text-gray-700 text-xs">
-                        DeFi
-                      </div>
-                    </div>
-                    <div className="text-sm text-gray-600 mb-3">
-                      0x68b3...465f
-                    </div>
-
-                    <div className="grid grid-cols-2 sm:grid-cols-4 gap-4 text-xs">
-                      <div>
-                        <div className="text-gray-600 mb-1">Transactions</div>
-                        <div className="text-lg font-bold text-gray-900">
-                          12,847
-                        </div>
-                      </div>
-                      <div>
-                        <div className="text-gray-600 mb-1">Volume</div>
-                        <div className="text-lg font-bold text-gray-900">
-                          $8.2M
-                        </div>
-                      </div>
-                      <div>
-                        <div className="text-gray-600 mb-1">
-                          Avg Transaction
-                        </div>
-                        <div className="text-lg font-bold text-gray-900">
-                          $638
-                        </div>
-                      </div>
-                      <div>
-                        <div className="text-gray-600 mb-1">24h Trend</div>
-                        <div className="flex items-center space-x-2">
-                          <i className="fas fa-arrow-up text-gray-700" />
-                          <span className="text-lg font-bold text-gray-900">
-                            +45%
-                          </span>
-                        </div>
-                      </div>
-                    </div>
-                  </div>
-                </div>
-
-                <div className="flex lg:flex-col space-x-2 lg:space-x-0 lg:space-y-2">
-                  <button className="flex-1 lg:flex-none px-4 py-2 bg-gray-900 text-white text-sm hover:bg-gray-800">
-                    View Details
-                  </button>
-                  <button className="flex-1 lg:flex-none px-4 py-2 border border-gray-300 text-gray-700 text-sm hover:bg-gray-50">
-                    Set Alert
-                  </button>
-                </div>
+            {loading ? (
+              <div className="bg-white border border-gray-300 p-8 text-center text-gray-500">
+                <i className="fas fa-spinner fa-spin mr-2" />
+                Loading hotspots...
               </div>
-            </div>
-
-            {/* Hotspot 2 - High */}
-            <div className="bg-white border border-gray-300 p-5 hover:shadow-lg transition-shadow">
-              <div className="flex flex-col lg:flex-row lg:items-center lg:justify-between space-y-4 lg:space-y-0">
-                <div className="flex items-start space-x-4 flex-1">
-                  <div className="flex-shrink-0">
-                    <div className="w-12 h-12 bg-gray-700 flex items-center justify-center text-white font-bold text-lg">
-                      2
-                    </div>
-                  </div>
-
-                  <div className="flex-1 min-w-0">
-                    <div className="flex items-center space-x-3 mb-2">
-                      <h3 className="text-base font-semibold text-gray-900">
-                        OpenSea Seaport
-                      </h3>
-                      <div className="px-2 py-1 bg-gray-700 text-white text-xs">
-                        High
-                      </div>
-                      <div className="px-2 py-1 bg-gray-200 text-gray-700 text-xs">
-                        NFT
-                      </div>
-                    </div>
-                    <div className="text-sm text-gray-600 mb-3">
-                      0x00c0...0000
-                    </div>
-
-                    <div className="grid grid-cols-2 sm:grid-cols-4 gap-4 text-xs">
-                      <div>
-                        <div className="text-gray-600 mb-1">Transactions</div>
-                        <div className="text-lg font-bold text-gray-900">
-                          8,521
-                        </div>
-                      </div>
-                      <div>
-                        <div className="text-gray-600 mb-1">Volume</div>
-                        <div className="text-lg font-bold text-gray-900">
-                          $5.7M
-                        </div>
-                      </div>
-                      <div>
-                        <div className="text-gray-600 mb-1">
-                          Avg Transaction
-                        </div>
-                        <div className="text-lg font-bold text-gray-900">
-                          $669
-                        </div>
-                      </div>
-                      <div>
-                        <div className="text-gray-600 mb-1">24h Trend</div>
-                        <div className="flex items-center space-x-2">
-                          <i className="fas fa-arrow-up text-gray-700" />
-                          <span className="text-lg font-bold text-gray-900">
-                            +32%
-                          </span>
-                        </div>
-                      </div>
-                    </div>
-                  </div>
-                </div>
-
-                <div className="flex lg:flex-col space-x-2 lg:space-x-0 lg:space-y-2">
-                  <button className="flex-1 lg:flex-none px-4 py-2 bg-gray-900 text-white text-sm hover:bg-gray-800">
-                    View Details
-                  </button>
-                  <button className="flex-1 lg:flex-none px-4 py-2 border border-gray-300 text-gray-700 text-sm hover:bg-gray-50">
-                    Set Alert
-                  </button>
-                </div>
+            ) : error ? (
+              <div className="bg-white border border-gray-300 p-8 text-center text-red-500">
+                {error}
               </div>
-            </div>
-
-            {/* Hotspot 3 - High */}
-            <div className="bg-white border border-gray-300 p-5 hover:shadow-lg transition-shadow">
-              <div className="flex flex-col lg:flex-row lg:items-center lg:justify-between space-y-4 lg:space-y-0">
-                <div className="flex items-start space-x-4 flex-1">
-                  <div className="flex-shrink-0">
-                    <div className="w-12 h-12 bg-gray-700 flex items-center justify-center text-white font-bold text-lg">
-                      3
-                    </div>
-                  </div>
-
-                  <div className="flex-1 min-w-0">
-                    <div className="flex items-center space-x-3 mb-2">
-                      <h3 className="text-base font-semibold text-gray-900">
-                        Aave V3 Pool
-                      </h3>
-                      <div className="px-2 py-1 bg-gray-700 text-white text-xs">
-                        High
-                      </div>
-                      <div className="px-2 py-1 bg-gray-200 text-gray-700 text-xs">
-                        Lending
-                      </div>
-                    </div>
-                    <div className="text-sm text-gray-600 mb-3">
-                      0x87ac...7f2e
-                    </div>
-
-                    <div className="grid grid-cols-2 sm:grid-cols-4 gap-4 text-xs">
-                      <div>
-                        <div className="text-gray-600 mb-1">Transactions</div>
-                        <div className="text-lg font-bold text-gray-900">
-                          7,234
-                        </div>
-                      </div>
-                      <div>
-                        <div className="text-gray-600 mb-1">Volume</div>
-                        <div className="text-lg font-bold text-gray-900">
-                          $4.9M
-                        </div>
-                      </div>
-                      <div>
-                        <div className="text-gray-600 mb-1">
-                          Avg Transaction
-                        </div>
-                        <div className="text-lg font-bold text-gray-900">
-                          $677
-                        </div>
-                      </div>
-                      <div>
-                        <div className="text-gray-600 mb-1">24h Trend</div>
-                        <div className="flex items-center space-x-2">
-                          <i className="fas fa-arrow-up text-gray-700" />
-                          <span className="text-lg font-bold text-gray-900">
-                            +28%
-                          </span>
-                        </div>
-                      </div>
-                    </div>
-                  </div>
-                </div>
-
-                <div className="flex lg:flex-col space-x-2 lg:space-x-0 lg:space-y-2">
-                  <button className="flex-1 lg:flex-none px-4 py-2 bg-gray-900 text-white text-sm hover:bg-gray-800">
-                    View Details
-                  </button>
-                  <button className="flex-1 lg:flex-none px-4 py-2 border border-gray-300 text-gray-700 text-sm hover:bg-gray-50">
-                    Set Alert
-                  </button>
-                </div>
+            ) : hotspots.length === 0 ? (
+              <div className="bg-white border border-gray-300 p-8 text-center text-gray-500">
+                No hotspots found for this period.
               </div>
-            </div>
-
-            {/* Hotspot 4 - Medium */}
-            <div className="bg-white border border-gray-300 p-5 hover:shadow-lg transition-shadow">
-              <div className="flex flex-col lg:flex-row lg:items-center lg:justify-between space-y-4 lg:space-y-0">
-                <div className="flex items-start space-x-4 flex-1">
-                  <div className="flex-shrink-0">
-                    <div className="w-12 h-12 bg-gray-500 flex items-center justify-center text-white font-bold text-lg">
-                      4
-                    </div>
-                  </div>
-
-                  <div className="flex-1 min-w-0">
-                    <div className="flex items-center space-x-3 mb-2">
-                      <h3 className="text-base font-semibold text-gray-900">
-                        Curve Finance
-                      </h3>
-                      <div className="px-2 py-1 bg-gray-500 text-white text-xs">
-                        Medium
-                      </div>
-                      <div className="px-2 py-1 bg-gray-200 text-gray-700 text-xs">
-                        DEX
-                      </div>
-                    </div>
-                    <div className="text-sm text-gray-600 mb-3">
-                      0xbebc...44dd
-                    </div>
-
-                    <div className="grid grid-cols-2 sm:grid-cols-4 gap-4 text-xs">
-                      <div>
-                        <div className="text-gray-600 mb-1">Transactions</div>
-                        <div className="text-lg font-bold text-gray-900">
-                          5,892
+            ) : (
+              hotspots.map((hotspot, index) => (
+                <div
+                  key={hotspot.address}
+                  className="bg-white border border-gray-300 p-5 hover:shadow-lg transition-shadow"
+                >
+                  <div className="flex flex-col lg:flex-row lg:items-center lg:justify-between space-y-4 lg:space-y-0">
+                    <div className="flex items-start space-x-4 flex-1">
+                      <div className="flex-shrink-0">
+                        <div className="w-12 h-12 bg-gray-900 flex items-center justify-center text-white font-bold text-lg">
+                          {index + 1}
                         </div>
                       </div>
-                      <div>
-                        <div className="text-gray-600 mb-1">Volume</div>
-                        <div className="text-lg font-bold text-gray-900">
-                          $3.4M
-                        </div>
-                      </div>
-                      <div>
-                        <div className="text-gray-600 mb-1">
-                          Avg Transaction
-                        </div>
-                        <div className="text-lg font-bold text-gray-900">
-                          $577
-                        </div>
-                      </div>
-                      <div>
-                        <div className="text-gray-600 mb-1">24h Trend</div>
-                        <div className="flex items-center space-x-2">
-                          <i className="fas fa-arrow-up text-gray-700" />
-                          <span className="text-lg font-bold text-gray-900">
-                            +18%
-                          </span>
-                        </div>
-                      </div>
-                    </div>
-                  </div>
-                </div>
 
-                <div className="flex lg:flex-col space-x-2 lg:space-x-0 lg:space-y-2">
-                  <button className="flex-1 lg:flex-none px-4 py-2 bg-gray-900 text-white text-sm hover:bg-gray-800">
-                    View Details
-                  </button>
-                  <button className="flex-1 lg:flex-none px-4 py-2 border border-gray-300 text-gray-700 text-sm hover:bg-gray-50">
-                    Set Alert
-                  </button>
-                </div>
-              </div>
-            </div>
+                      <div className="flex-1 min-w-0">
+                        <div className="flex items-center space-x-3 mb-2">
+                          <h3 className="text-base font-semibold text-gray-900">
+                            {hotspot.labelName}
+                          </h3>
+                          <div
+                            className={`px-2 py-1 text-white text-xs ${hotspot.transactionCount > 1000 ? "bg-gray-900" : "bg-gray-500"}`}
+                          >
+                            {hotspot.transactionCount > 1000
+                              ? "Critical"
+                              : "High"}
+                          </div>
+                          <div className="px-2 py-1 bg-gray-200 text-gray-700 text-xs">
+                            {hotspot.category}
+                          </div>
+                        </div>
+                        <div className="text-sm text-gray-600 mb-3 truncate">
+                          {hotspot.address}
+                        </div>
 
-            {/* Hotspot 5 - Medium */}
-            <div className="bg-white border border-gray-300 p-5 hover:shadow-lg transition-shadow">
-              <div className="flex flex-col lg:flex-row lg:items-center lg:justify-between space-y-4 lg:space-y-0">
-                <div className="flex items-start space-x-4 flex-1">
-                  <div className="flex-shrink-0">
-                    <div className="w-12 h-12 bg-gray-500 flex items-center justify-center text-white font-bold text-lg">
-                      5
-                    </div>
-                  </div>
-
-                  <div className="flex-1 min-w-0">
-                    <div className="flex items-center space-x-3 mb-2">
-                      <h3 className="text-base font-semibold text-gray-900">
-                        1inch Router
-                      </h3>
-                      <div className="px-2 py-1 bg-gray-500 text-white text-xs">
-                        Medium
-                      </div>
-                      <div className="px-2 py-1 bg-gray-200 text-gray-700 text-xs">
-                        DEX
+                        <div className="grid grid-cols-2 sm:grid-cols-4 gap-4 text-xs">
+                          <div>
+                            <div className="text-gray-600 mb-1">
+                              Transactions
+                            </div>
+                            <div className="text-lg font-bold text-gray-900">
+                              {hotspot.transactionCount?.toLocaleString()}
+                            </div>
+                          </div>
+                          <div>
+                            <div className="text-gray-600 mb-1">Volume</div>
+                            <div className="text-lg font-bold text-gray-900">
+                              ${(hotspot.totalVolume / 1000).toFixed(1)}K
+                            </div>
+                          </div>
+                          <div>
+                            <div className="text-gray-600 mb-1">
+                              Avg Transaction
+                            </div>
+                            <div className="text-lg font-bold text-gray-900">
+                              ${hotspot.avgTransactionValue?.toFixed(2)}
+                            </div>
+                          </div>
+                          <div>
+                            <div className="text-gray-600 mb-1">24h Trend</div>
+                            <div className="flex items-center space-x-2">
+                              <i className="fas fa-arrow-up text-gray-700" />
+                              <span className="text-lg font-bold text-gray-900">
+                                +5%
+                              </span>
+                            </div>
+                          </div>
+                        </div>
                       </div>
                     </div>
-                    <div className="text-sm text-gray-600 mb-3">
-                      0x1111...1117
-                    </div>
 
-                    <div className="grid grid-cols-2 sm:grid-cols-4 gap-4 text-xs">
-                      <div>
-                        <div className="text-gray-600 mb-1">Transactions</div>
-                        <div className="text-lg font-bold text-gray-900">
-                          4,567
-                        </div>
-                      </div>
-                      <div>
-                        <div className="text-gray-600 mb-1">Volume</div>
-                        <div className="text-lg font-bold text-gray-900">
-                          $2.8M
-                        </div>
-                      </div>
-                      <div>
-                        <div className="text-gray-600 mb-1">
-                          Avg Transaction
-                        </div>
-                        <div className="text-lg font-bold text-gray-900">
-                          $613
-                        </div>
-                      </div>
-                      <div>
-                        <div className="text-gray-600 mb-1">24h Trend</div>
-                        <div className="flex items-center space-x-2">
-                          <i className="fas fa-minus text-gray-700" />
-                          <span className="text-lg font-bold text-gray-900">
-                            +2%
-                          </span>
-                        </div>
-                      </div>
+                    <div className="flex lg:flex-col space-x-2 lg:space-x-0 lg:space-y-2">
+                      <button className="flex-1 lg:flex-none px-4 py-2 bg-gray-900 text-white text-sm hover:bg-gray-800">
+                        View Details
+                      </button>
                     </div>
                   </div>
                 </div>
-
-                <div className="flex lg:flex-col space-x-2 lg:space-x-0 lg:space-y-2">
-                  <button className="flex-1 lg:flex-none px-4 py-2 bg-gray-900 text-white text-sm hover:bg-gray-800">
-                    View Details
-                  </button>
-                  <button className="flex-1 lg:flex-none px-4 py-2 border border-gray-300 text-gray-700 text-sm hover:bg-gray-50">
-                    Set Alert
-                  </button>
-                </div>
-              </div>
-            </div>
-
-            {/* Hotspot 6 - Medium */}
-            <div className="bg-white border border-gray-300 p-5 hover:shadow-lg transition-shadow">
-              <div className="flex flex-col lg:flex-row lg:items-center lg:justify-between space-y-4 lg:space-y-0">
-                <div className="flex items-start space-x-4 flex-1">
-                  <div className="flex-shrink-0">
-                    <div className="w-12 h-12 bg-gray-500 flex items-center justify-center text-white font-bold text-lg">
-                      6
-                    </div>
-                  </div>
-
-                  <div className="flex-1 min-w-0">
-                    <div className="flex items-center space-x-3 mb-2">
-                      <h3 className="text-base font-semibold text-gray-900">
-                        PancakeSwap Router
-                      </h3>
-                      <div className="px-2 py-1 bg-gray-500 text-white text-xs">
-                        Medium
-                      </div>
-                      <div className="px-2 py-1 bg-gray-200 text-gray-700 text-xs">
-                        DEX
-                      </div>
-                    </div>
-                    <div className="text-sm text-gray-600 mb-3">
-                      0x10ed...43c7
-                    </div>
-
-                    <div className="grid grid-cols-2 sm:grid-cols-4 gap-4 text-xs">
-                      <div>
-                        <div className="text-gray-600 mb-1">Transactions</div>
-                        <div className="text-lg font-bold text-gray-900">
-                          3,891
-                        </div>
-                      </div>
-                      <div>
-                        <div className="text-gray-600 mb-1">Volume</div>
-                        <div className="text-lg font-bold text-gray-900">
-                          $2.1M
-                        </div>
-                      </div>
-                      <div>
-                        <div className="text-gray-600 mb-1">
-                          Avg Transaction
-                        </div>
-                        <div className="text-lg font-bold text-gray-900">
-                          $540
-                        </div>
-                      </div>
-                      <div>
-                        <div className="text-gray-600 mb-1">24h Trend</div>
-                        <div className="flex items-center space-x-2">
-                          <i className="fas fa-arrow-up text-gray-700" />
-                          <span className="text-lg font-bold text-gray-900">
-                            +8%
-                          </span>
-                        </div>
-                      </div>
-                    </div>
-                  </div>
-                </div>
-
-                <div className="flex lg:flex-col space-x-2 lg:space-x-0 lg:space-y-2">
-                  <button className="flex-1 lg:flex-none px-4 py-2 bg-gray-900 text-white text-sm hover:bg-gray-800">
-                    View Details
-                  </button>
-                  <button className="flex-1 lg:flex-none px-4 py-2 border border-gray-300 text-gray-700 text-sm hover:bg-gray-50">
-                    Set Alert
-                  </button>
-                </div>
-              </div>
-            </div>
-
-            {/* Hotspot 7 - Low */}
-            <div className="bg-white border border-gray-300 p-5 hover:shadow-lg transition-shadow">
-              <div className="flex flex-col lg:flex-row lg:items-center lg:justify-between space-y-4 lg:space-y-0">
-                <div className="flex items-start space-x-4 flex-1">
-                  <div className="flex-shrink-0">
-                    <div className="w-12 h-12 bg-gray-400 flex items-center justify-center text-white font-bold text-lg">
-                      7
-                    </div>
-                  </div>
-
-                  <div className="flex-1 min-w-0">
-                    <div className="flex items-center space-x-3 mb-2">
-                      <h3 className="text-base font-semibold text-gray-900">
-                        Compound Finance
-                      </h3>
-                      <div className="px-2 py-1 bg-gray-400 text-white text-xs">
-                        Low
-                      </div>
-                      <div className="px-2 py-1 bg-gray-200 text-gray-700 text-xs">
-                        Lending
-                      </div>
-                    </div>
-                    <div className="text-sm text-gray-600 mb-3">
-                      0x3d9a...c8b5
-                    </div>
-
-                    <div className="grid grid-cols-2 sm:grid-cols-4 gap-4 text-xs">
-                      <div>
-                        <div className="text-gray-600 mb-1">Transactions</div>
-                        <div className="text-lg font-bold text-gray-900">
-                          2,456
-                        </div>
-                      </div>
-                      <div>
-                        <div className="text-gray-600 mb-1">Volume</div>
-                        <div className="text-lg font-bold text-gray-900">
-                          $1.5M
-                        </div>
-                      </div>
-                      <div>
-                        <div className="text-gray-600 mb-1">
-                          Avg Transaction
-                        </div>
-                        <div className="text-lg font-bold text-gray-900">
-                          $611
-                        </div>
-                      </div>
-                      <div>
-                        <div className="text-gray-600 mb-1">24h Trend</div>
-                        <div className="flex items-center space-x-2">
-                          <i className="fas fa-arrow-down text-gray-700" />
-                          <span className="text-lg font-bold text-gray-900">
-                            -3%
-                          </span>
-                        </div>
-                      </div>
-                    </div>
-                  </div>
-                </div>
-
-                <div className="flex lg:flex-col space-x-2 lg:space-x-0 lg:space-y-2">
-                  <button className="flex-1 lg:flex-none px-4 py-2 bg-gray-900 text-white text-sm hover:bg-gray-800">
-                    View Details
-                  </button>
-                  <button className="flex-1 lg:flex-none px-4 py-2 border border-gray-300 text-gray-700 text-sm hover:bg-gray-50">
-                    Set Alert
-                  </button>
-                </div>
-              </div>
-            </div>
-
-            {/* Hotspot 8 - Low */}
-            <div className="bg-white border border-gray-300 p-5 hover:shadow-lg transition-shadow">
-              <div className="flex flex-col lg:flex-row lg:items-center lg:justify-between space-y-4 lg:space-y-0">
-                <div className="flex items-start space-x-4 flex-1">
-                  <div className="flex-shrink-0">
-                    <div className="w-12 h-12 bg-gray-400 flex items-center justify-center text-white font-bold text-lg">
-                      8
-                    </div>
-                  </div>
-
-                  <div className="flex-1 min-w-0">
-                    <div className="flex items-center space-x-3 mb-2">
-                      <h3 className="text-base font-semibold text-gray-900">
-                        Blur Marketplace
-                      </h3>
-                      <div className="px-2 py-1 bg-gray-400 text-white text-xs">
-                        Low
-                      </div>
-                      <div className="px-2 py-1 bg-gray-200 text-gray-700 text-xs">
-                        NFT
-                      </div>
-                    </div>
-                    <div className="text-sm text-gray-600 mb-3">
-                      0x0000...0000
-                    </div>
-
-                    <div className="grid grid-cols-2 sm:grid-cols-4 gap-4 text-xs">
-                      <div>
-                        <div className="text-gray-600 mb-1">Transactions</div>
-                        <div className="text-lg font-bold text-gray-900">
-                          1,823
-                        </div>
-                      </div>
-                      <div>
-                        <div className="text-gray-600 mb-1">Volume</div>
-                        <div className="text-lg font-bold text-gray-900">
-                          $1.2M
-                        </div>
-                      </div>
-                      <div>
-                        <div className="text-gray-600 mb-1">
-                          Avg Transaction
-                        </div>
-                        <div className="text-lg font-bold text-gray-900">
-                          $658
-                        </div>
-                      </div>
-                      <div>
-                        <div className="text-gray-600 mb-1">24h Trend</div>
-                        <div className="flex items-center space-x-2">
-                          <i className="fas fa-minus text-gray-700" />
-                          <span className="text-lg font-bold text-gray-900">
-                            0%
-                          </span>
-                        </div>
-                      </div>
-                    </div>
-                  </div>
-                </div>
-
-                <div className="flex lg:flex-col space-x-2 lg:space-x-0 lg:space-y-2">
-                  <button className="flex-1 lg:flex-none px-4 py-2 bg-gray-900 text-white text-sm hover:bg-gray-800">
-                    View Details
-                  </button>
-                  <button className="flex-1 lg:flex-none px-4 py-2 border border-gray-300 text-gray-700 text-sm hover:bg-gray-50">
-                    Set Alert
-                  </button>
-                </div>
-              </div>
-            </div>
+              ))
+            )}
           </div>
 
           {/* Pagination */}
           <div className="mt-6 bg-white border border-gray-300 p-4">
             <div className="flex flex-col sm:flex-row items-center justify-between space-y-3 sm:space-y-0 text-sm">
-              <div className="text-gray-600">
-                Showing 1-8 of 127 hotspots
-              </div>
+              <div className="text-gray-600">Showing 1-8 of 127 hotspots</div>
 
               <div className="flex items-center space-x-2">
                 <button className="px-3 py-2 border border-gray-300 text-gray-700 text-sm hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed">

@@ -2,6 +2,8 @@ package edu.rit.NetworkActivity.data.entity;
 
 import jakarta.persistence.*;
 import lombok.Data;
+import org.hibernate.annotations.JdbcTypeCode;
+import org.hibernate.type.SqlTypes;
 import java.time.OffsetDateTime;
 
 @Entity
@@ -35,6 +37,7 @@ public class Transaction {
 
     private String status;
 
-    @Column(name = "input_data", columnDefinition = "json")
+    @Column(name = "input_data")
+    @JdbcTypeCode(SqlTypes.JSON)
     private String inputData;
 }
