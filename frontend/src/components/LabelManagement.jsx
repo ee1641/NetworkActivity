@@ -3,47 +3,95 @@ import Sidebar from "./Sidebar";
 import SidebarToggleButton from "./SidebarToggleButton";
 import { useSidebarToggle } from "../hooks/useSidebarToggle";
 
+const API_BASE_URL = "http://localhost:8080/api/labels";
+const ITEMS_PER_PAGE = 10;
+
 const LabelManagement = () => {
   const { isSidebarOpen, toggleSidebar } = useSidebarToggle();
 
-  const [isAddLabelOpen, setIsAddLabelOpen] = useState(false);
+  const [isLabelModalOpen, setIsLabelModalOpen] = useState(false);
+  const [isEditMode, setIsEditMode] = useState(false);
+  const [editingOriginalAddress, setEditingOriginalAddress] = useState("");
+
   const [labels, setLabels] = useState([]);
+  const [history, setHistory] = useState([]);
+
   const [loading, setLoading] = useState(true);
+  const [historyLoading, setHistoryLoading] = useState(true);
   const [error, setError] = useState("");
+  const [historyError, setHistoryError] = useState("");
+
   const [searchTerm, setSearchTerm] = useState("");
   const [selectedCategory, setSelectedCategory] = useState("All Entity Types");
 
-  useEffect(() => {
-    const fetchLabels = async () => {
-      try {
-        setLoading(true);
-        setError("");
+  const [submitting, setSubmitting] = useState(false);
+  const [deletingAddress, setDeletingAddress] = useState("");
+  const [currentPage, setCurrentPage] = useState(1);
 
-        const response = await fetch("http://localhost:8080/api/labels");
-        if (!response.ok) {
-          throw new Error(`Failed to fetch labels: ${response.status}`);
-        }
+  const emptyLabelForm = {
+    address: "",
+    labelName: "",
+    category: "",
+    entityName: "",
+    source: "manual",
+    createdBy: "User Name",
+  };
 
-        const data = await response.json();
-        setLabels(Array.isArray(data) ? data : []);
-      } catch (err) {
-        setError(err.message || "Failed to load labels");
-      } finally {
-        setLoading(false);
+  const [labelForm, setLabelForm] = useState(emptyLabelForm);
+
+  const fetchLabels = async () => {
+    try {
+      setLoading(true);
+      setError("");
+
+      const response = await fetch(API_BASE_URL);
+      if (!response.ok) {
+        throw new Error(`Failed to fetch labels: ${response.status}`);
       }
-    };
 
+      const data = await response.json();
+      setLabels(Array.isArray(data) ? data : []);
+    } catch (err) {
+      setError(err.message || "Failed to load labels");
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const fetchHistory = async () => {
+    try {
+      setHistoryLoading(true);
+      setHistoryError("");
+
+      const response = await fetch(`${API_BASE_URL}/history`);
+      if (!response.ok) {
+        throw new Error(`Failed to fetch label history: ${response.status}`);
+      }
+
+      const data = await response.json();
+      setHistory(Array.isArray(data) ? data : []);
+    } catch (err) {
+      setHistoryError(err.message || "Failed to load label history");
+    } finally {
+      setHistoryLoading(false);
+    }
+  };
+
+  useEffect(() => {
     fetchLabels();
+    fetchHistory();
   }, []);
 
   const filteredLabels = useMemo(() => {
     return labels.filter((label) => {
+      const term = searchTerm.trim().toLowerCase();
+
       const matchesSearch =
-        !searchTerm ||
-        label.address?.toLowerCase().includes(searchTerm.toLowerCase()) ||
-        label.labelName?.toLowerCase().includes(searchTerm.toLowerCase()) ||
-        label.entityName?.toLowerCase().includes(searchTerm.toLowerCase()) ||
-        label.category?.toLowerCase().includes(searchTerm.toLowerCase());
+        !term ||
+        label.address?.toLowerCase().includes(term) ||
+        label.labelName?.toLowerCase().includes(term) ||
+        label.entityName?.toLowerCase().includes(term) ||
+        label.category?.toLowerCase().includes(term);
 
       const matchesCategory =
         selectedCategory === "All Entity Types" ||
@@ -52,6 +100,243 @@ const LabelManagement = () => {
       return matchesSearch && matchesCategory;
     });
   }, [labels, searchTerm, selectedCategory]);
+
+  useEffect(() => {
+    setCurrentPage(1);
+  }, [searchTerm, selectedCategory]);
+
+  const totalPages = Math.max(1, Math.ceil(filteredLabels.length / ITEMS_PER_PAGE));
+
+  useEffect(() => {
+    if (currentPage > totalPages) {
+      setCurrentPage(totalPages);
+    }
+  }, [currentPage, totalPages]);
+
+  const paginatedLabels = useMemo(() => {
+    const startIndex = (currentPage - 1) * ITEMS_PER_PAGE;
+    return filteredLabels.slice(startIndex, startIndex + ITEMS_PER_PAGE);
+  }, [filteredLabels, currentPage]);
+
+  const visiblePageNumbers = useMemo(() => {
+    const pages = [];
+    const maxVisible = 5;
+
+    let start = Math.max(1, currentPage - 2);
+    let end = Math.min(totalPages, start + maxVisible - 1);
+
+    if (end - start + 1 < maxVisible) {
+      start = Math.max(1, end - maxVisible + 1);
+    }
+
+    for (let i = start; i <= end; i += 1) {
+      pages.push(i);
+    }
+
+    return pages;
+  }, [currentPage, totalPages]);
+
+  const handleFormChange = (field, value) => {
+    setLabelForm((prev) => ({
+      ...prev,
+      [field]: value,
+    }));
+  };
+
+  const resetLabelForm = () => {
+    setLabelForm(emptyLabelForm);
+    setIsEditMode(false);
+    setEditingOriginalAddress("");
+  };
+
+  const openAddModal = () => {
+    resetLabelForm();
+    setIsEditMode(false);
+    setIsLabelModalOpen(true);
+  };
+
+  const openEditModal = (label) => {
+    setLabelForm({
+      address: label.address || "",
+      labelName: label.labelName || "",
+      category: label.category || "",
+      entityName: label.entityName || "",
+      source: label.source || "manual",
+      createdBy: label.createdBy || "User Name",
+    });
+    setEditingOriginalAddress(label.address);
+    setIsEditMode(true);
+    setIsLabelModalOpen(true);
+  };
+
+  const closeModal = () => {
+    resetLabelForm();
+    setIsLabelModalOpen(false);
+  };
+
+  const handleSubmit = async () => {
+    if (
+      !labelForm.address.trim() ||
+      !labelForm.labelName.trim() ||
+      !labelForm.category.trim()
+    ) {
+      setError("Address, label name, and entity type are required.");
+      return;
+    }
+
+    try {
+      setSubmitting(true);
+      setError("");
+
+      let response;
+
+      if (isEditMode) {
+        response = await fetch(
+          `${API_BASE_URL}/${encodeURIComponent(editingOriginalAddress)}`,
+          {
+            method: "PUT",
+            headers: {
+              "Content-Type": "application/json",
+            },
+            body: JSON.stringify(labelForm),
+          }
+        );
+      } else {
+        response = await fetch(API_BASE_URL, {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify(labelForm),
+        });
+      }
+
+      if (!response.ok) {
+        let message = `Failed to ${isEditMode ? "update" : "create"} label: ${response.status}`;
+        try {
+          const text = await response.text();
+          if (text) message = text;
+        } catch (_) {
+          // ignore
+        }
+        throw new Error(message);
+      }
+
+      await fetchLabels();
+      await fetchHistory();
+      closeModal();
+    } catch (err) {
+      setError(err.message || `Failed to ${isEditMode ? "update" : "create"} label`);
+    } finally {
+      setSubmitting(false);
+    }
+  };
+
+  const handleDelete = async (address) => {
+    const confirmed = window.confirm(
+      `Are you sure you want to delete the label for ${address}?`
+    );
+
+    if (!confirmed) return;
+
+    try {
+      setDeletingAddress(address);
+      setError("");
+
+      const response = await fetch(
+        `${API_BASE_URL}/${encodeURIComponent(address)}`,
+        {
+          method: "DELETE",
+        }
+      );
+
+      if (!response.ok) {
+        let message = `Failed to delete label: ${response.status}`;
+        try {
+          const text = await response.text();
+          if (text) message = text;
+        } catch (_) {
+          // ignore
+        }
+        throw new Error(message);
+      }
+
+      await fetchLabels();
+      await fetchHistory();
+    } catch (err) {
+      setError(err.message || "Failed to delete label");
+    } finally {
+      setDeletingAddress("");
+    }
+  };
+
+  const formatDateTime = (value) => {
+    if (!value) return "-";
+    const date = new Date(value);
+    if (Number.isNaN(date.getTime())) return "-";
+    return date.toLocaleString();
+  };
+
+  const formatRelativeTime = (value) => {
+    if (!value) return "-";
+
+    const date = new Date(value);
+    if (Number.isNaN(date.getTime())) return "-";
+
+    const now = new Date();
+    const diffMs = now.getTime() - date.getTime();
+
+    const minute = 60 * 1000;
+    const hour = 60 * minute;
+    const day = 24 * hour;
+
+    if (diffMs < minute) return "Just now";
+    if (diffMs < hour) {
+      const minutes = Math.floor(diffMs / minute);
+      return `${minutes} minute${minutes !== 1 ? "s" : ""} ago`;
+    }
+    if (diffMs < day) {
+      const hours = Math.floor(diffMs / hour);
+      return `${hours} hour${hours !== 1 ? "s" : ""} ago`;
+    }
+
+    const days = Math.floor(diffMs / day);
+    return `${days} day${days !== 1 ? "s" : ""} ago`;
+  };
+
+  const getHistoryTitle = (item) => {
+    switch (item.action) {
+      case "CREATED":
+        return "New Label Added";
+      case "DELETED":
+        return "Label Deleted";
+      default:
+        return "Label Updated";
+    }
+  };
+
+  const getHistoryDescription = (item) => {
+    if (item.action === "CREATED") {
+      return `Created "${item.newValue || "-"}"`;
+    }
+
+    if (item.action === "DELETED") {
+      return `Removed "${item.oldValue || "-"}"`;
+    }
+
+    return `Changed from "${item.oldValue || "-"}" to "${item.newValue || "-"}"`;
+  };
+
+  const getHistoryBorderClass = (item) => {
+    switch (item.action) {
+      case "CREATED":
+        return "border-gray-700";
+      case "DELETED":
+        return "border-gray-500";
+      default:
+        return "border-gray-600";
+    }
+  };
 
   return (
     <div className="min-h-screen bg-gray-50 flex flex-col">
@@ -71,13 +356,15 @@ const LabelManagement = () => {
           </div>
 
           <div className="flex items-center space-x-3 md:space-x-6">
-            <div className="flex items-center space-x-2 text-xs text-gray-600">
-              <div className="w-2 h-2 bg-gray-400 rounded-full" />
-              <span className="hidden sm:inline">Auto-refresh: 30s</span>
-            </div>
-
-            <button className="w-8 h-8 flex items-center justify-center text-gray-600 hover:bg-gray-100">
-              <i className="fas fa-cog" />
+            <button
+              onClick={() => {
+                fetchLabels();
+                fetchHistory();
+              }}
+              className="w-8 h-8 flex items-center justify-center text-gray-600 hover:bg-gray-100"
+              title="Refresh"
+            >
+              <i className="fas fa-sync-alt" />
             </button>
 
             <div className="flex items-center space-x-2">
@@ -107,7 +394,7 @@ const LabelManagement = () => {
               </div>
 
               <button
-                onClick={() => setIsAddLabelOpen(true)}
+                onClick={openAddModal}
                 className="bg-gray-900 text-white px-4 py-2 text-sm font-semibold hover:bg-gray-800 flex items-center space-x-2"
               >
                 <i className="fas fa-plus" />
@@ -115,6 +402,12 @@ const LabelManagement = () => {
               </button>
             </div>
           </div>
+
+          {error && (
+            <div className="bg-red-50 border border-red-300 text-red-700 px-4 py-3 mb-6 text-sm">
+              {error}
+            </div>
+          )}
 
           <div className="bg-white border border-gray-300 p-4 mb-6">
             <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
@@ -207,18 +500,7 @@ const LabelManagement = () => {
                     </tr>
                   )}
 
-                  {!loading && error && (
-                    <tr>
-                      <td
-                        colSpan="5"
-                        className="px-4 py-6 text-center text-red-600"
-                      >
-                        {error}
-                      </td>
-                    </tr>
-                  )}
-
-                  {!loading && !error && filteredLabels.length === 0 && (
+                  {!loading && !error && paginatedLabels.length === 0 && (
                     <tr>
                       <td
                         colSpan="5"
@@ -230,8 +512,7 @@ const LabelManagement = () => {
                   )}
 
                   {!loading &&
-                    !error &&
-                    filteredLabels.map((label) => (
+                    paginatedLabels.map((label) => (
                       <tr key={label.address} className="hover:bg-gray-50">
                         <td className="px-4 py-3 text-gray-900 font-mono">
                           {label.address}
@@ -239,24 +520,27 @@ const LabelManagement = () => {
                         <td className="px-4 py-3 text-gray-900 font-semibold">
                           {label.labelName || "-"}
                         </td>
-                        <td className="px-4 py-3">
-                          <div className="flex items-center space-x-2">
-                            <span className="text-gray-700">
-                              {label.category || "-"}
-                            </span>
-                          </div>
+                        <td className="px-4 py-3 text-gray-700">
+                          {label.category || "-"}
                         </td>
                         <td className="px-4 py-3 text-gray-600">
-                          {label.createdAt
-                            ? new Date(label.createdAt).toLocaleString()
-                            : "-"}
+                          {formatDateTime(label.createdAt)}
                         </td>
                         <td className="px-4 py-3">
                           <div className="flex items-center space-x-2">
-                            <button className="text-gray-600 hover:text-gray-900">
+                            <button
+                              onClick={() => openEditModal(label)}
+                              className="text-gray-600 hover:text-gray-900"
+                              title="Edit label"
+                            >
                               <i className="fas fa-edit" />
                             </button>
-                            <button className="text-gray-600 hover:text-gray-900">
+                            <button
+                              onClick={() => handleDelete(label.address)}
+                              disabled={deletingAddress === label.address}
+                              className="text-red-600 hover:text-red-800 disabled:opacity-50"
+                              title="Delete label"
+                            >
                               <i className="fas fa-trash" />
                             </button>
                           </div>
@@ -268,257 +552,152 @@ const LabelManagement = () => {
             </div>
 
             <div className="p-4 border-t border-gray-300 flex items-center justify-between">
-              <button className="px-3 py-1 text-xs text-gray-600 border border-gray-300 hover:bg-gray-50">
+              <button
+                onClick={() => setCurrentPage((prev) => Math.max(1, prev - 1))}
+                disabled={currentPage === 1}
+                className="px-3 py-1 text-xs text-gray-600 border border-gray-300 hover:bg-gray-50 disabled:opacity-50"
+              >
                 Previous
               </button>
+
               <div className="flex items-center space-x-1">
-                <button className="px-3 py-1 text-xs bg-gray-900 text-white">
-                  1
-                </button>
-                <button className="px-3 py-1 text-xs text-gray-600 hover:bg-gray-100">
-                  2
-                </button>
-                <button className="px-3 py-1 text-xs text-gray-600 hover:bg-gray-100">
-                  3
-                </button>
-                <span className="px-2 text-xs text-gray-600">...</span>
-                <button className="px-3 py-1 text-xs text-gray-600 hover:bg-gray-100">
-                  25
-                </button>
+                {visiblePageNumbers[0] > 1 && (
+                  <>
+                    <button
+                      onClick={() => setCurrentPage(1)}
+                      className="px-3 py-1 text-xs text-gray-600 hover:bg-gray-100"
+                    >
+                      1
+                    </button>
+                    {visiblePageNumbers[0] > 2 && (
+                      <span className="px-2 text-xs text-gray-600">...</span>
+                    )}
+                  </>
+                )}
+
+                {visiblePageNumbers.map((page) => (
+                  <button
+                    key={page}
+                    onClick={() => setCurrentPage(page)}
+                    className={`px-3 py-1 text-xs ${
+                      currentPage === page
+                        ? "bg-gray-900 text-white"
+                        : "text-gray-600 hover:bg-gray-100"
+                    }`}
+                  >
+                    {page}
+                  </button>
+                ))}
+
+                {visiblePageNumbers[visiblePageNumbers.length - 1] < totalPages && (
+                  <>
+                    {visiblePageNumbers[visiblePageNumbers.length - 1] < totalPages - 1 && (
+                      <span className="px-2 text-xs text-gray-600">...</span>
+                    )}
+                    <button
+                      onClick={() => setCurrentPage(totalPages)}
+                      className="px-3 py-1 text-xs text-gray-600 hover:bg-gray-100"
+                    >
+                      {totalPages}
+                    </button>
+                  </>
+                )}
               </div>
-              <button className="px-3 py-1 text-xs text-gray-600 border border-gray-300 hover:bg-gray-50">
+
+              <button
+                onClick={() =>
+                  setCurrentPage((prev) => Math.min(totalPages, prev + 1))
+                }
+                disabled={currentPage === totalPages}
+                className="px-3 py-1 text-xs text-gray-600 border border-gray-300 hover:bg-gray-50 disabled:opacity-50"
+              >
                 Next
               </button>
             </div>
           </div>
 
-          <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-            <div className="bg-white border border-gray-300">
-              <div className="p-4 border-b border-gray-300">
-                <h2 className="text-sm font-semibold text-gray-900 flex items-center space-x-2">
-                  <i className="fas fa-history text-gray-600" />
-                  <span>Label History (Audit Log)</span>
-                </h2>
-              </div>
-
-              <div className="p-4 space-y-3 max-h-96 overflow-y-auto text-xs">
-                <div className="border-l-4 border-gray-700 pl-3 pb-3">
-                  <div className="flex items-start justify-between mb-1">
-                    <div className="font-semibold text-gray-900">
-                      Label Updated
-                    </div>
-                    <div className="text-gray-500">2 hours ago</div>
-                  </div>
-                  <div className="text-gray-600 mb-1">
-                    <span className="font-semibold">John Smith</span> updated
-                    label for 0x742d...3f8a
-                  </div>
-                  <div className="text-gray-500">
-                    Changed from &quot;Binance Wallet&quot; to &quot;Binance Hot
-                    Wallet&quot;
-                  </div>
-                </div>
-
-                <div className="border-l-4 border-gray-500 pl-3 pb-3">
-                  <div className="flex items-start justify-between mb-1">
-                    <div className="font-semibold text-gray-900">
-                      New Label Added
-                    </div>
-                    <div className="text-gray-500">5 hours ago</div>
-                  </div>
-                  <div className="text-gray-600 mb-1">
-                    <span className="font-semibold">Sarah Johnson</span> added
-                    label for 0x1f98...F984
-                  </div>
-                  <div className="text-gray-500">
-                    Created &quot;Uniswap V3 Router&quot; (DEX)
-                  </div>
-                </div>
-
-                <div className="border-l-4 border-gray-500 pl-3 pb-3">
-                  <div className="flex items-start justify-between mb-1">
-                    <div className="font-semibold text-gray-900">
-                      Label Deleted
-                    </div>
-                    <div className="text-gray-500">1 day ago</div>
-                  </div>
-                  <div className="text-gray-600 mb-1">
-                    <span className="font-semibold">Mike Chen</span> deleted
-                    label for 0x9c1e...7b2d
-                  </div>
-                  <div className="text-gray-500">
-                    Removed &quot;Old Exchange Wallet&quot; (Wallet)
-                  </div>
-                </div>
-
-                <div className="border-l-4 border-gray-500 pl-3 pb-3">
-                  <div className="flex items-start justify-between mb-1">
-                    <div className="font-semibold text-gray-900">
-                      Bulk Import
-                    </div>
-                    <div className="text-gray-500">2 days ago</div>
-                  </div>
-                  <div className="text-gray-600 mb-1">
-                    <span className="font-semibold">Admin User</span> imported
-                    45 labels from CSV
-                  </div>
-                  <div className="text-gray-500">
-                    File: exchange_wallets_2024.csv
-                  </div>
-                </div>
-
-                <div className="border-l-4 border-gray-500 pl-3 pb-3">
-                  <div className="flex items-start justify-between mb-1">
-                    <div className="font-semibold text-gray-900">
-                      Label Updated
-                    </div>
-                    <div className="text-gray-500">3 days ago</div>
-                  </div>
-                  <div className="text-gray-600 mb-1">
-                    <span className="font-semibold">John Smith</span> updated
-                    entity type for 0xa0b8...eB48
-                  </div>
-                  <div className="text-gray-500">
-                    Changed from &quot;Wallet&quot; to &quot;Smart
-                    Contract&quot;
-                  </div>
-                </div>
-
-                <div className="border-l-4 border-gray-500 pl-3 pb-3">
-                  <div className="flex items-start justify-between mb-1">
-                    <div className="font-semibold text-gray-900">
-                      New Label Added
-                    </div>
-                    <div className="text-gray-500">4 days ago</div>
-                  </div>
-                  <div className="text-gray-600 mb-1">
-                    <span className="font-semibold">Sarah Johnson</span> added
-                    label for 0x88e6...5640
-                  </div>
-                  <div className="text-gray-500">
-                    Created &quot;Arbitrum Bridge Contract&quot; (Bridge)
-                  </div>
-                </div>
-              </div>
-
-              <div className="p-4 border-t border-gray-300">
-                <button className="w-full text-xs text-gray-700 py-2 border border-gray-300 hover:bg-gray-50">
-                  View Full Audit Log
-                </button>
-              </div>
+          <div className="bg-white border border-gray-300">
+            <div className="p-4 border-b border-gray-300">
+              <h2 className="text-sm font-semibold text-gray-900 flex items-center space-x-2">
+                <i className="fas fa-history text-gray-600" />
+                <span>Label History (Audit Log)</span>
+              </h2>
             </div>
 
-            <div className="bg-white border border-gray-300">
-              <div className="p-4 border-b border-gray-300">
-                <h2 className="text-sm font-semibold text-gray-900 flex items-center space-x-2">
-                  <i className="fas fa-file-import text-gray-600" />
-                  <span>Bulk Import/Export</span>
-                </h2>
-              </div>
+            <div className="p-4 space-y-3 max-h-[500px] overflow-y-auto text-xs">
+              {historyLoading && (
+                <div className="text-gray-500">Loading history...</div>
+              )}
 
-              <div className="p-4 space-y-4 text-xs">
-                <div>
-                  <h3 className="font-semibold text-gray-900 mb-3">
-                    Import Labels from CSV
-                  </h3>
-                  <div className="border-2 border-dashed border-gray-300 p-6 text-center bg-gray-50 hover:bg-gray-100 cursor-pointer">
-                    <i className="fas fa-cloud-upload-alt text-gray-400 text-3xl mb-2" />
-                    <p className="text-sm text-gray-700 mb-1">
-                      Drop CSV file here or click to browse
-                    </p>
-                    <p className="text-gray-500">Maximum file size: 10MB</p>
-                  </div>
+              {!historyLoading && historyError && (
+                <div className="text-red-600">{historyError}</div>
+              )}
 
-                  <div className="mt-3 flex items-center space-x-2">
-                    <i className="fas fa-info-circle text-gray-500" />
-                    <p className="text-gray-600">
-                      CSV must include: address, label, entity_type columns
-                    </p>
-                  </div>
-                </div>
+              {!historyLoading && !historyError && history.length === 0 && (
+                <div className="text-gray-500">No history found.</div>
+              )}
 
-                <div className="border-t border-gray-200 pt-4">
-                  <h3 className="font-semibold text-gray-900 mb-3">
-                    CSV Template
-                  </h3>
-                  <button className="w-full flex items-center justify-center space-x-2 px-4 py-2 border border-gray-300 text-sm text-gray-700 hover:bg-gray-50">
-                    <i className="fas fa-download" />
-                    <span>Download CSV Template</span>
-                  </button>
-                  <p className="text-gray-500 mt-2">
-                    Use this template to ensure proper formatting for bulk
-                    imports
-                  </p>
-                </div>
-
-                <div className="border-t border-gray-200 pt-4">
-                  <h3 className="font-semibold text-gray-900 mb-3">
-                    Export Current Labels
-                  </h3>
-                  <div className="space-y-2">
-                    <button className="w-full flex items-center justify-center space-x-2 px-4 py-2 bg-gray-900 text-white text-sm hover:bg-gray-800">
-                      <i className="fas fa-file-csv" />
-                      <span>Export All Labels to CSV</span>
-                    </button>
-                    <button className="w-full flex items-center justify-center space-x-2 px-4 py-2 border border-gray-300 text-sm text-gray-700 hover:bg-gray-50">
-                      <i className="fas fa-filter" />
-                      <span>Export Filtered Results</span>
-                    </button>
-                  </div>
-                </div>
-
-                <div className="border-t border-gray-200 pt-4">
-                  <h3 className="font-semibold text-gray-900 mb-3">
-                    Recent Imports
-                  </h3>
-                  <div className="space-y-2">
-                    <div className="flex items-center justify-between p-2 bg-gray-50 border border-gray-200">
-                      <div className="flex items-center space-x-2">
-                        <i className="fas fa-file-csv text-gray-600" />
-                        <div>
-                          <div className="font-semibold text-gray-900">
-                            exchange_wallets_2024.csv
-                          </div>
-                          <div className="text-gray-500">45 labels imported</div>
-                        </div>
+              {!historyLoading &&
+                !historyError &&
+                history.map((item) => (
+                  <div
+                    key={item.id}
+                    className={`border-l-4 ${getHistoryBorderClass(
+                      item
+                    )} pl-3 pb-3`}
+                  >
+                    <div className="flex items-start justify-between mb-1">
+                      <div className="font-semibold text-gray-900">
+                        {getHistoryTitle(item)}
                       </div>
-                      <div className="text-gray-500">2 days ago</div>
+                      <div className="text-gray-500">
+                        {formatRelativeTime(item.changedAt)}
+                      </div>
                     </div>
 
-                    <div className="flex items-center justify-between p-2 bg-gray-50 border border-gray-200">
-                      <div className="flex items-center space-x-2">
-                        <i className="fas fa-file-csv text-gray-600" />
-                        <div>
-                          <div className="font-semibold text-gray-900">
-                            dex_contracts.csv
-                          </div>
-                          <div className="text-gray-500">23 labels imported</div>
-                        </div>
-                      </div>
-                      <div className="text-gray-500">1 week ago</div>
+                    <div className="text-gray-600 mb-1">
+                      <span className="font-semibold">
+                        {item.changedBy || "System"}
+                      </span>{" "}
+                      {item.action === "CREATED" && "added label for "}
+                      {item.action === "UPDATED" && "updated label for "}
+                      {item.action === "DELETED" && "deleted label for "}
+                      {item.address || "-"}
+                    </div>
+
+                    <div className="text-gray-500">
+                      {getHistoryDescription(item)}
                     </div>
                   </div>
-                </div>
-              </div>
+                ))}
+            </div>
+
+            <div className="p-4 border-t border-gray-300">
+              <button
+                onClick={fetchHistory}
+                className="w-full text-xs text-gray-700 py-2 border border-gray-300 hover:bg-gray-50"
+              >
+                Refresh Audit Log
+              </button>
             </div>
           </div>
         </main>
       </div>
 
-      {isAddLabelOpen && (
+      {isLabelModalOpen && (
         <div
           className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4"
           onClick={(e) => {
-            if (e.target === e.currentTarget) setIsAddLabelOpen(false);
+            if (e.target === e.currentTarget) closeModal();
           }}
         >
           <div className="bg-white border border-gray-300 w-full max-w-2xl max-h-screen overflow-y-auto">
             <div className="p-4 border-b border-gray-300 flex items-center justify-between">
               <h2 className="text-lg font-semibold text-gray-900">
-                Add New Label
+                {isEditMode ? "Edit Label" : "Add New Label"}
               </h2>
               <button
-                onClick={() => setIsAddLabelOpen(false)}
+                onClick={closeModal}
                 className="text-gray-600 hover:text-gray-900"
               >
                 <i className="fas fa-times" />
@@ -532,12 +711,12 @@ const LabelManagement = () => {
                 </label>
                 <input
                   type="text"
+                  value={labelForm.address}
+                  onChange={(e) => handleFormChange("address", e.target.value)}
                   placeholder="0x..."
-                  className="w-full px-3 py-2 border border-gray-300 text-gray-900 focus:outline-none focus:border-gray-500"
+                  disabled={isEditMode}
+                  className="w-full px-3 py-2 border border-gray-300 text-gray-900 focus:outline-none focus:border-gray-500 disabled:bg-gray-100"
                 />
-                <p className="text-xs text-gray-500 mt-1">
-                  Enter the blockchain address (wallet, contract, etc.)
-                </p>
               </div>
 
               <div>
@@ -546,67 +725,83 @@ const LabelManagement = () => {
                 </label>
                 <input
                   type="text"
+                  value={labelForm.labelName}
+                  onChange={(e) =>
+                    handleFormChange("labelName", e.target.value)
+                  }
                   placeholder="e.g., Binance Hot Wallet"
                   className="w-full px-3 py-2 border border-gray-300 text-gray-900 focus:outline-none focus:border-gray-500"
                 />
-                <p className="text-xs text-gray-500 mt-1">
-                  Provide a descriptive name for this entity
-                </p>
               </div>
 
               <div>
                 <label className="block font-semibold text-gray-900 mb-2">
                   Entity Type *
                 </label>
-                <select className="w-full px-3 py-2 border border-gray-300 text-gray-900 focus:outline-none focus:border-gray-500">
+                <select
+                  value={labelForm.category}
+                  onChange={(e) => handleFormChange("category", e.target.value)}
+                  className="w-full px-3 py-2 border border-gray-300 text-gray-900 focus:outline-none focus:border-gray-500"
+                >
                   <option value="">Select entity type...</option>
-                  <option value="wallet">Wallet</option>
-                  <option value="contract">Smart Contract</option>
-                  <option value="dex">DEX (Decentralized Exchange)</option>
-                  <option value="bridge">Bridge</option>
-                  <option value="exchange">Centralized Exchange</option>
-                  <option value="defi">DeFi Protocol</option>
-                  <option value="nft">NFT Contract</option>
-                  <option value="other">Other</option>
+                  <option value="Wallet">Wallet</option>
+                  <option value="Smart Contract">Smart Contract</option>
+                  <option value="DEX">DEX</option>
+                  <option value="Bridge">Bridge</option>
+                  <option value="Exchange">Exchange</option>
                 </select>
               </div>
 
               <div>
                 <label className="block font-semibold text-gray-900 mb-2">
-                  Notes (Optional)
+                  Entity Name (Optional)
                 </label>
-                <textarea
-                  rows={4}
-                  placeholder="Add any additional information or context about this entity..."
+                <input
+                  type="text"
+                  value={labelForm.entityName}
+                  onChange={(e) =>
+                    handleFormChange("entityName", e.target.value)
+                  }
+                  placeholder="e.g., Binance"
                   className="w-full px-3 py-2 border border-gray-300 text-gray-900 focus:outline-none focus:border-gray-500"
                 />
-                <p className="text-xs text-gray-500 mt-1">
-                  Include relevant details, transaction patterns, or risk
-                  indicators
-                </p>
               </div>
 
-              <div className="flex items-center space-x-2">
-                <input
-                  type="checkbox"
-                  id="verifiedEntity"
-                  className="w-4 h-4 border-gray-300"
-                />
-                <label htmlFor="verifiedEntity" className="text-gray-700">
-                  Mark as verified entity
+              <div>
+                <label className="block font-semibold text-gray-900 mb-2">
+                  Created By
                 </label>
+                <input
+                  type="text"
+                  value={labelForm.createdBy}
+                  onChange={(e) =>
+                    handleFormChange("createdBy", e.target.value)
+                  }
+                  placeholder="User Name"
+                  className="w-full px-3 py-2 border border-gray-300 text-gray-900 focus:outline-none focus:border-gray-500"
+                />
               </div>
             </div>
 
             <div className="p-4 border-t border-gray-300 flex items-center justify-end space-x-3">
               <button
-                onClick={() => setIsAddLabelOpen(false)}
+                onClick={closeModal}
                 className="px-4 py-2 text-sm text-gray-700 border border-gray-300 hover:bg-gray-50"
               >
                 Cancel
               </button>
-              <button className="px-4 py-2 text-sm bg-gray-900 text-white hover:bg-gray-800">
-                Add Label
+              <button
+                onClick={handleSubmit}
+                disabled={submitting}
+                className="px-4 py-2 text-sm bg-gray-900 text-white hover:bg-gray-800 disabled:opacity-50"
+              >
+                {submitting
+                  ? isEditMode
+                    ? "Saving..."
+                    : "Adding..."
+                  : isEditMode
+                  ? "Save Changes"
+                  : "Add Label"}
               </button>
             </div>
           </div>

@@ -2,6 +2,7 @@ package edu.rit.NetworkActivity.web.controller;
 
 import edu.rit.NetworkActivity.service.LabelService;
 import edu.rit.NetworkActivity.service.dto.LabelDto;
+import edu.rit.NetworkActivity.service.dto.LabelHistoryDto;
 import edu.rit.NetworkActivity.service.dto.LabelUpsertRequest;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
@@ -9,7 +10,6 @@ import org.springframework.web.bind.annotation.*;
 import java.util.List;
 
 @RestController
-//http://localhost:8080/api/labels
 @RequestMapping("/api/labels")
 @CrossOrigin(origins = "*")
 public class LabelController {
@@ -30,6 +30,16 @@ public class LabelController {
         return labelService.getAll(category, entityName, source, address);
     }
 
+    @GetMapping("/history")
+    public List<LabelHistoryDto> getHistory() {
+        return labelService.getHistory();
+    }
+
+    @GetMapping("/{address}/history")
+    public List<LabelHistoryDto> getHistoryByAddress(@PathVariable String address) {
+        return labelService.getHistoryByAddress(address);
+    }
+
     @GetMapping("/{address}")
     public ResponseEntity<LabelDto> getByAddress(@PathVariable String address) {
         LabelDto dto = labelService.getByAddress(address);
@@ -45,7 +55,8 @@ public class LabelController {
     }
 
     @PutMapping("/{address}")
-    public ResponseEntity<LabelDto> update(@PathVariable String address, @RequestBody LabelUpsertRequest request) {
+    public ResponseEntity<LabelDto> update(@PathVariable String address,
+                                           @RequestBody LabelUpsertRequest request) {
         return ResponseEntity.ok(labelService.update(address, request));
     }
 

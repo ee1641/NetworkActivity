@@ -2,6 +2,7 @@ package edu.rit.NetworkActivity.data.entity;
 
 import jakarta.persistence.*;
 import lombok.Data;
+
 import java.time.OffsetDateTime;
 
 @Entity
@@ -10,10 +11,17 @@ import java.time.OffsetDateTime;
 public class LabelHistory {
 
     @Id
+    @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
 
-    @Column(name = "label_id", nullable = false)
+    @Column(name = "label_id")
     private Long labelId;
+
+    @Column(name = "address")
+    private String address;
+
+    @Column(name = "action")
+    private String action;
 
     @Column(name = "changed_at")
     private OffsetDateTime changedAt;
