@@ -1,10 +1,14 @@
 package edu.rit.NetworkActivity.service;
 
 import edu.rit.NetworkActivity.data.entity.Label;
+import edu.rit.NetworkActivity.data.entity.LabelHistory;
+import edu.rit.NetworkActivity.data.repository.LabelHistoryRepository;
 import edu.rit.NetworkActivity.data.repository.LabelRepository;
 import edu.rit.NetworkActivity.service.dto.LabelDto;
+import edu.rit.NetworkActivity.service.dto.LabelHistoryDto;
 import edu.rit.NetworkActivity.service.dto.LabelUpsertRequest;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 
 import java.time.OffsetDateTime;
 import java.util.List;
@@ -15,9 +19,12 @@ import java.util.stream.Collectors;
 public class LabelService {
 
     private final LabelRepository labelRepository;
+    private final LabelHistoryRepository labelHistoryRepository;
 
-    public LabelService(LabelRepository labelRepository) {
+    public LabelService(LabelRepository labelRepository,
+                        LabelHistoryRepository labelHistoryRepository) {
         this.labelRepository = labelRepository;
+        this.labelHistoryRepository = labelHistoryRepository;
     }
 
     public List<LabelDto> getAll(String category, String entityName, String source, String address) {
@@ -36,37 +43,149 @@ public class LabelService {
                 .orElse(null);
     }
 
-    public LabelDto create(LabelUpsertRequest request) {
-        Label label = new Label();
-        label.setAddress(normalizeNullable(request.getAddress()));
-        label.setTargetAddress(normalizeNullable(request.getAddress()));
-        label.setLabelName(normalizeNullable(request.getLabelName()));
-        label.setLabelText(normalizeNullable(request.getLabelName()));
-        label.setCategory(normalizeNullable(request.getCategory()));
-        label.setEntityName(normalizeNullable(request.getEntityName()));
-        label.setSource(normalizeNullable(request.getSource()) != null ? normalizeNullable(request.getSource()) : "manual");
-        label.setCreatedBy(normalizeNullable(request.getCreatedBy()));
-        label.setCreatedAt(OffsetDateTime.now());
-
-        return toDto(labelRepository.save(label));
+    public List<LabelHistoryDto> getHistory() {
+        return labelHistoryRepository.findAllByOrderByChangedAtDesc().stream()
+                .map(this::toHistoryDto)
+                .collect(Collectors.toList());
     }
 
-    public LabelDto update(String address, LabelUpsertRequest request) {
-        Label label = labelRepository.findByAddressIgnoreCase(address).orElseThrow();
+    public List<LabelHistoryDto> getHistoryByAddress(String address) {
+        return labelHistoryRepository.findByAddressIgnoreCaseOrderByChangedAtDesc(address).stream()
+                .map(this::toHistoryDto)
+                .collect(Collectors.toList());
+    }
 
-        label.setLabelName(normalizeNullable(request.getLabelName()));
-        label.setLabelText(normalizeNullable(request.getLabelName()));
-        label.setCategory(normalizeNullable(request.getCategory()));
+    @Transactional
+    public LabelDto create(LabelUpsertRequest request) {
+        String normalizedAddress = normalizeNullable(request.getAddress());
+        if (normalizedAddress == null) {
+            throw new IllegalArgumentException("Address is required.");
+        }
+
+        if (labelRepository.findByAddressIgnoreCase(normalizedAddress).isPresent()) {
+            throw new IllegalArgumentException("A label already exists for this address.");
+        }
+
+        String normalizedLabelName = normalizeNullable(request.getLabelName());
+        if (normalizedLabelName == null) {
+            throw new IllegalArgumentException("Label name is required.");
+        }
+
+        String normalizedCategory = normalizeNullable(request.getCategory());
+        if (normalizedCategory == null) {
+            throw new IllegalArgumentException("Category is required.");
+        }
+
+        String changedBy = normalizeNullable(request.getCreatedBy()) != null
+                ? normalizeNullable(request.getCreatedBy())
+                : "system";
+
+        Label label = new Label();
+        label.setAddress(normalizedAddress);
+        label.setTargetAddress(normalizedAddress);
+        label.setLabelName(normalizedLabelName);
+        label.setLabelText(normalizedLabelName);
+        label.setCategory(normalizedCategory);
+        label.setEntityName(normalizeNullable(request.getEntityName()));
+        label.setSource(normalizeNullable(request.getSource()) != null ? normalizeNullable(request.getSource()) : "manual");
+        label.setCreatedBy(changedBy);
+        label.setCreatedAt(OffsetDateTime.now());
+
+        Label saved = labelRepository.save(label);
+
+        saveHistory(
+                saved.getId(),
+                saved.getAddress(),
+                "CREATED",
+                null,
+                saved.getLabelName(),
+                changedBy
+        );
+
+        return toDto(saved);
+    }
+
+    @Transactional
+    public LabelDto update(String address, LabelUpsertRequest request) {
+        Label label = labelRepository.findByAddressIgnoreCase(address)
+                .orElseThrow(() -> new IllegalArgumentException("Label not found for address: " + address));
+
+        String oldValue = label.getLabelName();
+
+        String normalizedLabelName = normalizeNullable(request.getLabelName());
+        if (normalizedLabelName == null) {
+            throw new IllegalArgumentException("Label name is required.");
+        }
+
+        String normalizedCategory = normalizeNullable(request.getCategory());
+        if (normalizedCategory == null) {
+            throw new IllegalArgumentException("Category is required.");
+        }
+
+        label.setLabelName(normalizedLabelName);
+        label.setLabelText(normalizedLabelName);
+        label.setCategory(normalizedCategory);
         label.setEntityName(normalizeNullable(request.getEntityName()));
 
         String normalizedSource = normalizeNullable(request.getSource());
-        label.setSource(normalizedSource != null ? normalizedSource : label.getSource());
+        if (normalizedSource != null) {
+            label.setSource(normalizedSource);
+        }
 
-        return toDto(labelRepository.save(label));
+        Label saved = labelRepository.save(label);
+
+        String changedBy = normalizeNullable(request.getCreatedBy()) != null
+                ? normalizeNullable(request.getCreatedBy())
+                : "system";
+
+        saveHistory(
+                saved.getId(),
+                saved.getAddress(),
+                "UPDATED",
+                oldValue,
+                saved.getLabelName(),
+                changedBy
+        );
+
+        return toDto(saved);
     }
 
+    @Transactional
     public void delete(String address) {
-        labelRepository.findByAddressIgnoreCase(address).ifPresent(labelRepository::delete);
+        Label label = labelRepository.findByAddressIgnoreCase(address).orElse(null);
+        if (label == null) {
+            return;
+        }
+
+        String changedBy = label.getCreatedBy() != null ? label.getCreatedBy() : "system";
+
+        saveHistory(
+                label.getId(),
+                label.getAddress(),
+                "DELETED",
+                label.getLabelName(),
+                null,
+                changedBy
+        );
+
+        labelRepository.delete(label);
+    }
+
+    private void saveHistory(Long labelId,
+                             String address,
+                             String action,
+                             String oldValue,
+                             String newValue,
+                             String changedBy) {
+        LabelHistory history = new LabelHistory();
+        history.setLabelId(labelId);
+        history.setAddress(address);
+        history.setAction(action);
+        history.setOldValue(oldValue);
+        history.setNewValue(newValue);
+        history.setChangedAt(OffsetDateTime.now());
+        history.setChangedBy(changedBy != null ? changedBy : "system");
+        labelHistoryRepository.save(history);
     }
 
     private boolean matchesEqualsIgnoreCase(String actual, String filter) {
@@ -97,6 +216,19 @@ public class LabelService {
         dto.setSource(label.getSource());
         dto.setCreatedAt(label.getCreatedAt());
         dto.setCreatedBy(label.getCreatedBy());
+        return dto;
+    }
+
+    private LabelHistoryDto toHistoryDto(LabelHistory history) {
+        LabelHistoryDto dto = new LabelHistoryDto();
+        dto.setId(history.getId());
+        dto.setLabelId(history.getLabelId());
+        dto.setAddress(history.getAddress());
+        dto.setAction(history.getAction());
+        dto.setChangedAt(history.getChangedAt());
+        dto.setChangedBy(history.getChangedBy());
+        dto.setOldValue(history.getOldValue());
+        dto.setNewValue(history.getNewValue());
         return dto;
     }
 }

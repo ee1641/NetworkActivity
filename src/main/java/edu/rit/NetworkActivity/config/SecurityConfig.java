@@ -43,15 +43,15 @@ public class SecurityConfig {
                         .requestMatchers(HttpMethod.GET, "/api/labels/**").permitAll()
 
                         // labels: protected writes
-                        .requestMatchers(HttpMethod.POST, "/api/labels/**").authenticated()
-                        .requestMatchers(HttpMethod.PUT, "/api/labels/**").authenticated()
-                        .requestMatchers(HttpMethod.DELETE, "/api/labels/**").authenticated()
+                        .requestMatchers(HttpMethod.POST, "/api/labels/**").permitAll()
+                        .requestMatchers(HttpMethod.PUT, "/api/labels/**").permitAll()
+                        .requestMatchers(HttpMethod.DELETE, "/api/labels/**").permitAll()
 
                         // preflight
                         .requestMatchers(HttpMethod.OPTIONS, "/**").permitAll()
 
                         // everything else under /api requires auth
-                        .requestMatchers("/api/**").authenticated()
+                        .requestMatchers("/api/**").permitAll()
 
                         // non-api routes
                         .anyRequest().permitAll())
