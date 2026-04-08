@@ -11,6 +11,8 @@ public interface LabelRepository extends JpaRepository<Label, Long> {
 
     Optional<Label> findByAddress(String address);
 
+    List<Label> findByAddressIn(List<String> addresses);
+
     Optional<Label> findByAddressIgnoreCase(String address);
 
     List<Label> findByCategory(String category);

@@ -5,6 +5,7 @@ import edu.rit.NetworkActivity.service.FlowService;
 import edu.rit.NetworkActivity.service.dto.FlowAddressSummaryDto;
 import edu.rit.NetworkActivity.service.dto.FlowAggregateDto;
 import edu.rit.NetworkActivity.service.dto.HotspotDto;
+import edu.rit.NetworkActivity.service.dto.HotspotPageDto;
 import org.springframework.web.bind.annotation.*;
 
 import java.time.OffsetDateTime;
@@ -58,17 +59,23 @@ public class FlowController {
     }
 
     @GetMapping("/hotspots")
-    public List<HotspotDto> hotspots(
+    public HotspotPageDto hotspots(
             @RequestParam(required = false) String start,
             @RequestParam(required = false) String end,
-            @RequestParam(defaultValue = "10") int limit) {
+            @RequestParam(required = false) String category,
+            @RequestParam(defaultValue = "transactions") String sortBy,
+            @RequestParam(defaultValue = "0") int page,
+            @RequestParam(defaultValue = "8") int pageSize) {
 
         OffsetDateTime endDate = end != null ? OffsetDateTime.parse(end) : OffsetDateTime.now();
         OffsetDateTime startDate = start != null ? OffsetDateTime.parse(start) : endDate.minusHours(24);
 
-        int safeLimit = Math.max(1, Math.min(limit, 100));
+        long periodSeconds = java.time.Duration.between(startDate, endDate).getSeconds();
+        OffsetDateTime priorStart = startDate.minusSeconds(periodSeconds);
 
-        return flowService.getTopHotspots(startDate, endDate, safeLimit);
+        int safePageSize = Math.max(1, Math.min(pageSize, 100));
+
+        return flowService.getTopHotspots(startDate, endDate, priorStart, category, sortBy, page, safePageSize);
     }
 
     @GetMapping("/large-transactions")

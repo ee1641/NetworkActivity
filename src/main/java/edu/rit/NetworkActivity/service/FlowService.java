@@ -7,11 +7,13 @@ import edu.rit.NetworkActivity.data.repository.LabelRepository;
 import edu.rit.NetworkActivity.service.dto.FlowAddressSummaryDto;
 import edu.rit.NetworkActivity.service.dto.FlowAggregateDto;
 import edu.rit.NetworkActivity.service.dto.HotspotDto;
+import edu.rit.NetworkActivity.service.dto.HotspotPageDto;
 import org.springframework.stereotype.Service;
 
 import java.time.OffsetDateTime;
 import java.util.*;
 import java.util.stream.Collectors;
+import java.util.stream.Stream;
 
 @Service
 public class FlowService {
@@ -125,45 +127,108 @@ public class FlowService {
         return dto;
     }
 
-    public List<HotspotDto> getTopHotspots(OffsetDateTime start, OffsetDateTime end, int limit) {
-        List<Transaction> txs = transactionRepository.findByTimestampBetween(start, end);
+    public HotspotPageDto getTopHotspots(
+            OffsetDateTime start,
+            OffsetDateTime end,
+            OffsetDateTime priorStart,
+            String category,
+            String sortBy,
+            int page,
+            int pageSize) {
 
-        Map<String, List<Transaction>> grouped = txs.stream()
-                .filter(tx -> tx.getToAddress() != null)
-                .collect(Collectors.groupingBy(Transaction::getToAddress));
+        // Aggregate query: one row per receiver (DB does the GROUP BY — much faster)
+        List<Object[]> aggregated = transactionRepository.groupByReceiverBetween(start, end);
 
+        // Prior period counts for trend (also aggregated in DB)
+        List<Object[]> priorRows = transactionRepository.countByReceiverBetween(priorStart, start);
+        Map<String, Long> priorCountMap = new HashMap<>();
+        for (Object[] row : priorRows) {
+            priorCountMap.put((String) row[0], ((Number) row[1]).longValue());
+        }
+
+        // Batch label lookup — one query for all addresses instead of N queries
+        List<String> addresses = aggregated.stream()
+                .map(row -> (String) row[0])
+                .collect(Collectors.toList());
+        Map<String, Label> labelMap = new HashMap<>();
+        if (!addresses.isEmpty()) {
+            labelRepository.findByAddressIn(addresses)
+                    .forEach(l -> labelMap.put(l.getAddress(), l));
+        }
+
+        // Build HotspotDto list from aggregated rows
         List<HotspotDto> hotspots = new ArrayList<>();
+        for (Object[] row : aggregated) {
+            String address = (String) row[0];
+            long txCount = ((Number) row[1]).longValue();
+            double vol = row[2] == null ? 0.0 : ((Number) row[2]).doubleValue();
+            double avg = txCount == 0 ? 0.0 : vol / txCount;
 
-        for (Map.Entry<String, List<Transaction>> entry : grouped.entrySet()) {
-            String address = entry.getKey();
-            List<Transaction> addressTxs = entry.getValue();
+            long priorCount = priorCountMap.getOrDefault(address, 0L);
+            double trend = priorCount == 0
+                    ? (txCount > 0 ? 100.0 : 0.0)
+                    : ((txCount - priorCount) / (double) priorCount) * 100.0;
 
-            double totalVolume = addressTxs.stream()
-                    .map(Transaction::getValue)
-                    .filter(Objects::nonNull)
-                    .mapToDouble(Float::doubleValue)
-                    .sum();
-
-            long txCount = addressTxs.size();
-            double avg = txCount == 0 ? 0 : totalVolume / txCount;
-
-            Label label = labelRepository.findByAddress(address).orElse(null);
+            Label label = labelMap.get(address);
 
             HotspotDto dto = new HotspotDto();
             dto.setAddress(address);
             dto.setLabelName(label != null ? label.getLabelName() : "Unlabeled");
-            dto.setCategory(label != null ? label.getCategory() : "Unknown");
+            dto.setCategory(label != null && label.getCategory() != null ? label.getCategory() : "Unknown");
             dto.setTransactionCount(txCount);
-            dto.setTotalVolume(totalVolume);
+            dto.setTotalVolume(vol);
             dto.setAvgTransactionValue(avg);
+            dto.setTrendPercent(trend);
 
             hotspots.add(dto);
         }
 
-        return hotspots.stream()
-                .sorted(Comparator.comparing(HotspotDto::getTransactionCount).reversed())
-                .limit(limit)
-                .collect(Collectors.toList());
+        // Category filter
+        boolean filterCategory = category != null
+                && !category.isBlank()
+                && !category.equalsIgnoreCase("All Categories");
+
+        Stream<HotspotDto> stream = hotspots.stream();
+        if (filterCategory) {
+            stream = stream.filter(h -> category.equalsIgnoreCase(h.getCategory()));
+        }
+
+        // Sort
+        Comparator<HotspotDto> comparator;
+        if ("volume".equalsIgnoreCase(sortBy)) {
+            comparator = Comparator.comparing(HotspotDto::getTotalVolume).reversed();
+        } else if ("trend".equalsIgnoreCase(sortBy)) {
+            comparator = Comparator.comparing(HotspotDto::getTrendPercent).reversed();
+        } else {
+            comparator = Comparator.comparing(HotspotDto::getTransactionCount).reversed();
+        }
+
+        List<HotspotDto> sorted = stream.sorted(comparator).collect(Collectors.toList());
+
+        // Summary totals (before pagination slice)
+        long totalTransactions = sorted.stream().mapToLong(HotspotDto::getTransactionCount).sum();
+        double summaryVolume = sorted.stream().mapToDouble(HotspotDto::getTotalVolume).sum();
+        long totalCount = sorted.size();
+        int safePage = Math.max(0, page);
+        int safePageSize = Math.max(1, Math.min(pageSize, 100));
+        int totalPages = totalCount == 0 ? 1 : (int) Math.ceil((double) totalCount / safePageSize);
+
+        // Pagination slice
+        int fromIndex = safePage * safePageSize;
+        List<HotspotDto> pageContent = fromIndex >= sorted.size()
+                ? new ArrayList<>()
+                : sorted.subList(fromIndex, Math.min(fromIndex + safePageSize, sorted.size()));
+
+        HotspotPageDto result = new HotspotPageDto();
+        result.setContent(pageContent);
+        result.setPage(safePage);
+        result.setPageSize(safePageSize);
+        result.setTotalCount(totalCount);
+        result.setTotalPages(totalPages);
+        result.setTotalTransactions(totalTransactions);
+        result.setTotalVolume(summaryVolume);
+
+        return result;
     }
 
     public List<Transaction> getLargeTransactions(Float minValue, OffsetDateTime start, OffsetDateTime end, int limit) {

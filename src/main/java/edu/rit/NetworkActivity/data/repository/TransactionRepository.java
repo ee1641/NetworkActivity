@@ -2,6 +2,8 @@ package edu.rit.NetworkActivity.data.repository;
 
 import edu.rit.NetworkActivity.data.entity.Transaction;
 import org.springframework.data.jpa.repository.JpaRepository;
+import org.springframework.data.jpa.repository.Query;
+import org.springframework.data.repository.query.Param;
 
 import java.time.OffsetDateTime;
 import java.util.List;
@@ -25,4 +27,19 @@ public interface TransactionRepository extends JpaRepository<Transaction, Long> 
 
     List<Transaction> findByValueGreaterThanEqualAndTimestampBetween(Float minValue, OffsetDateTime start,
             OffsetDateTime end);
+
+    @Query("SELECT MAX(t.blockNumber) FROM Transaction t")
+    Optional<Long> findMaxBlockNumber();
+
+    @Query("SELECT t.toAddress, COUNT(t), SUM(t.value) FROM Transaction t " +
+           "WHERE t.timestamp BETWEEN :start AND :end AND t.toAddress IS NOT NULL " +
+           "GROUP BY t.toAddress")
+    List<Object[]> groupByReceiverBetween(@Param("start") OffsetDateTime start,
+                                          @Param("end") OffsetDateTime end);
+
+    @Query("SELECT t.toAddress, COUNT(t) FROM Transaction t " +
+           "WHERE t.timestamp BETWEEN :start AND :end AND t.toAddress IS NOT NULL " +
+           "GROUP BY t.toAddress")
+    List<Object[]> countByReceiverBetween(@Param("start") OffsetDateTime start,
+                                          @Param("end") OffsetDateTime end);
 }

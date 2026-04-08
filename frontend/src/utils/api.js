@@ -23,11 +23,22 @@ export const fetchAggregate = async (start, end, address) => {
   return handleResponse(response);
 };
 
-export const fetchHotspots = async (start, end, limit = 10) => {
+export const fetchHotspots = async ({
+  start,
+  end,
+  category,
+  sortBy = "transactions",
+  page = 0,
+  pageSize = 8,
+} = {}) => {
   const params = new URLSearchParams();
   if (start) params.append("start", start);
   if (end) params.append("end", end);
-  params.append("limit", limit);
+  if (category && category !== "All Categories")
+    params.append("category", category);
+  params.append("sortBy", sortBy);
+  params.append("page", page);
+  params.append("pageSize", pageSize);
 
   const response = await fetch(
     `${API_BASE_URL}/api/flows/hotspots?${params.toString()}`,
@@ -61,6 +72,11 @@ export const fetchAddressTransactions = async (address, start, end) => {
   const response = await fetch(
     `${API_BASE_URL}/api/flows/address/${address}?${params.toString()}`,
   );
+  return handleResponse(response);
+};
+
+export const fetchTransaction = async (txId) => {
+  const response = await fetch(`${API_BASE_URL}/api/vechain/tx/${txId}`);
   return handleResponse(response);
 };
 

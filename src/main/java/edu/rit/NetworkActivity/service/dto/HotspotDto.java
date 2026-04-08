@@ -25,4 +25,8 @@ public class HotspotDto {
 
     public double getAvgTransactionValue() { return avgTransactionValue; }
     public void setAvgTransactionValue(double avgTransactionValue) { this.avgTransactionValue = avgTransactionValue; }
+
+    private double trendPercent;
+    public double getTrendPercent() { return trendPercent; }
+    public void setTrendPercent(double trendPercent) { this.trendPercent = trendPercent; }
 }
