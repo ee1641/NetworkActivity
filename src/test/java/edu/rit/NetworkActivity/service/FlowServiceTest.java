@@ -7,6 +7,7 @@ import edu.rit.NetworkActivity.data.repository.TransactionRepository;
 import edu.rit.NetworkActivity.service.dto.FlowAddressSummaryDto;
 import edu.rit.NetworkActivity.service.dto.FlowAggregateDto;
 import edu.rit.NetworkActivity.service.dto.HotspotDto;
+import edu.rit.NetworkActivity.service.dto.HotspotPageDto;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
@@ -16,6 +17,8 @@ import org.mockito.junit.jupiter.MockitoExtension;
 
 import java.time.OffsetDateTime;
 import java.time.ZoneOffset;
+import java.util.ArrayList;
+import java.util.Collections;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
@@ -30,8 +33,9 @@ class FlowServiceTest {
     @Mock LabelRepository labelRepository;
     @InjectMocks FlowService flowService;
 
-    private static final OffsetDateTime START = OffsetDateTime.of(2025, 1, 1, 0, 0, 0, 0, ZoneOffset.UTC);
-    private static final OffsetDateTime END   = OffsetDateTime.of(2025, 1, 2, 0, 0, 0, 0, ZoneOffset.UTC);
+    private static final OffsetDateTime START       = OffsetDateTime.of(2025, 1, 1, 0, 0, 0, 0, ZoneOffset.UTC);
+    private static final OffsetDateTime END         = OffsetDateTime.of(2025, 1, 2, 0, 0, 0, 0, ZoneOffset.UTC);
+    private static final OffsetDateTime PRIOR_START = START.minusDays(1);
 
     private Transaction tx(Long id, String from, String to, Float value, Float gas) {
         Transaction tx = new Transaction();
@@ -145,17 +149,16 @@ class FlowServiceTest {
 
     @Test
     void getTopHotspots_rankesByTransactionCountDescending() {
-        Transaction t1 = tx(1L, "0xA", "0xHOT", 1.0f, 0.1f);
-        Transaction t2 = tx(2L, "0xB", "0xHOT", 2.0f, 0.1f);
-        Transaction t3 = tx(3L, "0xA", "0xHOT", 3.0f, 0.1f);
-        Transaction t4 = tx(4L, "0xA", "0xCOLD", 9.0f, 0.1f);
+        List<Object[]> rows = new ArrayList<>();
+        rows.add(new Object[]{"0xHOT",  3L, 6.0});
+        rows.add(new Object[]{"0xCOLD", 1L, 9.0});
+        when(transactionRepository.groupByReceiverBetween(START, END)).thenReturn(rows);
+        when(transactionRepository.countByReceiverBetween(PRIOR_START, START))
+                .thenReturn(Collections.emptyList());
+        when(labelRepository.findByAddressIn(anyList())).thenReturn(Collections.emptyList());
 
-        when(transactionRepository.findByTimestampBetween(START, END))
-                .thenReturn(List.of(t1, t2, t3, t4));
-        when(labelRepository.findByAddress("0xHOT")).thenReturn(Optional.empty());
-        when(labelRepository.findByAddress("0xCOLD")).thenReturn(Optional.empty());
-
-        List<HotspotDto> hotspots = flowService.getTopHotspots(START, END, 10);
+        HotspotPageDto page = flowService.getTopHotspots(START, END, PRIOR_START, null, null, 0, 100);
+        List<HotspotDto> hotspots = page.getContent();
 
         assertEquals(2, hotspots.size());
         assertEquals("0xHOT",  hotspots.get(0).getAddress());
@@ -168,31 +171,37 @@ class FlowServiceTest {
 
     @Test
     void getTopHotspots_respectsLimit() {
-        Transaction t1 = tx(1L, "0xA", "0xABC", 1.0f, 0.1f);
-        Transaction t2 = tx(2L, "0xA", "0xDEF", 2.0f, 0.1f);
-        Transaction t3 = tx(3L, "0xA", "0xGHI", 3.0f, 0.1f);
+        List<Object[]> rows = new ArrayList<>();
+        rows.add(new Object[]{"0xABC", 3L, 3.0});
+        rows.add(new Object[]{"0xDEF", 2L, 2.0});
+        rows.add(new Object[]{"0xGHI", 1L, 1.0});
+        when(transactionRepository.groupByReceiverBetween(START, END)).thenReturn(rows);
+        when(transactionRepository.countByReceiverBetween(PRIOR_START, START))
+                .thenReturn(Collections.emptyList());
+        when(labelRepository.findByAddressIn(anyList())).thenReturn(Collections.emptyList());
 
-        when(transactionRepository.findByTimestampBetween(START, END))
-                .thenReturn(List.of(t1, t2, t3));
-        when(labelRepository.findByAddress(anyString())).thenReturn(Optional.empty());
-
-        List<HotspotDto> hotspots = flowService.getTopHotspots(START, END, 2);
+        HotspotPageDto page = flowService.getTopHotspots(START, END, PRIOR_START, null, null, 0, 2);
+        List<HotspotDto> hotspots = page.getContent();
 
         assertEquals(2, hotspots.size());
     }
 
     @Test
     void getTopHotspots_attachesLabelWhenAvailable() {
-        Transaction t1 = tx(1L, "0xA", "0xLABELED", 5.0f, 0.1f);
         Label label = new Label();
+        label.setAddress("0xLABELED");
         label.setLabelName("My Exchange");
         label.setCategory("Exchange");
 
-        when(transactionRepository.findByTimestampBetween(START, END))
-                .thenReturn(List.of(t1));
-        when(labelRepository.findByAddress("0xLABELED")).thenReturn(Optional.of(label));
+        List<Object[]> rows = new ArrayList<>();
+        rows.add(new Object[]{"0xLABELED", 1L, 5.0});
+        when(transactionRepository.groupByReceiverBetween(START, END)).thenReturn(rows);
+        when(transactionRepository.countByReceiverBetween(PRIOR_START, START))
+                .thenReturn(Collections.emptyList());
+        when(labelRepository.findByAddressIn(anyList())).thenReturn(List.of(label));
 
-        List<HotspotDto> hotspots = flowService.getTopHotspots(START, END, 10);
+        HotspotPageDto page = flowService.getTopHotspots(START, END, PRIOR_START, null, null, 0, 100);
+        List<HotspotDto> hotspots = page.getContent();
 
         assertEquals(1, hotspots.size());
         assertEquals("My Exchange", hotspots.get(0).getLabelName());
@@ -201,13 +210,15 @@ class FlowServiceTest {
 
     @Test
     void getTopHotspots_unlabeledAddressDefaults() {
-        Transaction t1 = tx(1L, "0xA", "0xUNLABELED", 5.0f, 0.1f);
+        List<Object[]> rows = new ArrayList<>();
+        rows.add(new Object[]{"0xUNLABELED", 1L, 5.0});
+        when(transactionRepository.groupByReceiverBetween(START, END)).thenReturn(rows);
+        when(transactionRepository.countByReceiverBetween(PRIOR_START, START))
+                .thenReturn(Collections.emptyList());
+        when(labelRepository.findByAddressIn(anyList())).thenReturn(Collections.emptyList());
 
-        when(transactionRepository.findByTimestampBetween(START, END))
-                .thenReturn(List.of(t1));
-        when(labelRepository.findByAddress("0xUNLABELED")).thenReturn(Optional.empty());
-
-        List<HotspotDto> hotspots = flowService.getTopHotspots(START, END, 10);
+        HotspotPageDto page = flowService.getTopHotspots(START, END, PRIOR_START, null, null, 0, 100);
+        List<HotspotDto> hotspots = page.getContent();
 
         assertEquals("Unlabeled", hotspots.get(0).getLabelName());
         assertEquals("Unknown", hotspots.get(0).getCategory());
