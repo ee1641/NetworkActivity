@@ -90,3 +90,25 @@ export const fetchAddressSummary = async (address, start, end) => {
   );
   return handleResponse(response);
 };
+
+export const fetchVolumeTimeSeries = async (start, end) => {
+  const params = new URLSearchParams();
+  if (start) params.append("start", start);
+  if (end) params.append("end", end);
+
+  const response = await fetch(
+    `${API_BASE_URL}/api/flows/volume-timeseries?${params.toString()}`,
+  );
+  return handleResponse(response);
+};
+
+export const fetchClusterStats = async (start, end) => {
+  const params = new URLSearchParams();
+  if (start) params.append("start", start);
+  if (end) params.append("end", end);
+
+  const response = await fetch(
+    `${API_BASE_URL}/api/flows/cluster-stats?${params.toString()}`,
+  );
+  return handleResponse(response);
+};
