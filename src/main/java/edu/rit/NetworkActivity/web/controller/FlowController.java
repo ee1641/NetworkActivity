@@ -26,12 +26,14 @@ public class FlowController {
     public FlowAggregateDto aggregate(
             @RequestParam(required = false) String start,
             @RequestParam(required = false) String end,
-            @RequestParam(required = false) String address) {
+            @RequestParam(required = false) String address,
+            @RequestParam(required = false) Float minVolume,
+            @RequestParam(required = false) Float maxVolume) {
 
         OffsetDateTime endDate = end != null ? OffsetDateTime.parse(end) : OffsetDateTime.now();
         OffsetDateTime startDate = start != null ? OffsetDateTime.parse(start) : endDate.minusHours(24);
 
-        return flowService.getAggregate(startDate, endDate, address);
+        return flowService.getAggregate(startDate, endDate, address, minVolume, maxVolume);
     }
 
     @GetMapping("/address/{address}")
