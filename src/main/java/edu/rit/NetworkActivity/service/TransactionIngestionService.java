@@ -2,6 +2,8 @@ package edu.rit.NetworkActivity.service;
 
 import edu.rit.NetworkActivity.data.entity.Block;
 import edu.rit.NetworkActivity.data.entity.Address;
+import edu.rit.NetworkActivity.data.entity.Address;
+import edu.rit.NetworkActivity.data.entity.Block;
 import edu.rit.NetworkActivity.data.entity.Transaction;
 import edu.rit.NetworkActivity.data.repository.AddressRepository;
 import edu.rit.NetworkActivity.data.repository.BlockRepository;
@@ -117,13 +119,15 @@ public class TransactionIngestionService {
                 Instant.ofEpochSecond(rawTimestamp.longValue()), ZoneOffset.UTC);
         long blockNumber = rawNumber.longValue();
 
-        // Ensure the parent block row exists before inserting transactions (FK constraint).
+        // Ensure block row exists before inserting transactions (FK constraint)
         if (blockRepository.findByBlockNumber(blockNumber).isEmpty()) {
-            Block b = new Block();
-            b.setBlockNumber(blockNumber);
-            b.setBlockHash((String) block.get("id"));
-            b.setTimestamp(ts);
-            blockRepository.save(b);
+            Block blockEntity = new Block();
+            blockEntity.setBlockNumber(blockNumber);
+            blockEntity.setBlockHash((String) block.get("id"));
+            Number rawSize = (Number) block.get("size");
+            if (rawSize != null) blockEntity.setSize(rawSize.floatValue());
+            blockEntity.setTimestamp(ts);
+            blockRepository.save(blockEntity);
         }
 
         List<Map<String, Object>> transactions =
@@ -163,6 +167,9 @@ public class TransactionIngestionService {
             // Gas fee in VTHO
             double gasFee = hexWeiToNative((String) tx.get("paid"));
 
+            ensureAddress(origin, ts);
+            ensureAddress(primaryTo, ts);
+
             Transaction transaction = new Transaction();
             transaction.setTxHash(txId);
             transaction.setFromAddress(origin);
@@ -191,6 +198,20 @@ public class TransactionIngestionService {
         a.setFirstSeen(ts);
         a.setLastActive(ts);
         addressRepository.save(a);
+    }
+
+    private void ensureAddress(String addr, OffsetDateTime ts) {
+        if (addr == null) return;
+        if (addressRepository.findByAddress(addr).isEmpty()) {
+            Address a = new Address();
+            a.setAddress(addr);
+            a.setFirstSeen(ts);
+            a.setLastActive(ts);
+            a.setType("unknown");
+            a.setBalance(0.0f);
+            a.setRiskScore(0.0f);
+            addressRepository.save(a);
+        }
     }
 
     /**

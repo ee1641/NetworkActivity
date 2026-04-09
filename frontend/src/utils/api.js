@@ -11,11 +11,19 @@ const handleResponse = async (response) => {
   return response.json();
 };
 
-export const fetchAggregate = async (start, end, address) => {
+export const fetchAggregate = async (
+  start,
+  end,
+  address,
+  minVolume,
+  maxVolume,
+) => {
   const params = new URLSearchParams();
   if (start) params.append("start", start);
   if (end) params.append("end", end);
   if (address) params.append("address", address);
+  if (minVolume) params.append("minVolume", minVolume);
+  if (maxVolume) params.append("maxVolume", maxVolume);
 
   const response = await fetch(
     `${API_BASE_URL}/api/flows/aggregate?${params.toString()}`,

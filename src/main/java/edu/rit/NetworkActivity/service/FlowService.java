@@ -74,13 +74,36 @@ public class FlowService {
         return dto;
     }
 
-    public FlowAggregateDto getAggregate(OffsetDateTime start, OffsetDateTime end, String address) {
+    public FlowAggregateDto getAggregate(OffsetDateTime start, OffsetDateTime end, String address, Float minVol,
+            Float maxVol) {
         List<Transaction> txs;
 
+        float effectiveMin = minVol != null ? minVol : 0.0f;
+        float effectiveMax = maxVol != null ? maxVol : Float.MAX_VALUE;
+
         if (address != null && !address.isBlank()) {
-            txs = getTransactionsForAddress(address, start, end);
+            txs = transactionRepository.findByFromAddressAndTimestampBetween(address, start, end).stream()
+                    .filter(tx -> tx.getValue() != null && tx.getValue() >= effectiveMin
+                            && tx.getValue() <= effectiveMax)
+                    .collect(Collectors.toList());
+            List<Transaction> incoming = transactionRepository.findByToAddressAndTimestampBetween(address, start, end)
+                    .stream()
+                    .filter(tx -> tx.getValue() != null && tx.getValue() >= effectiveMin
+                            && tx.getValue() <= effectiveMax)
+                    .collect(Collectors.toList());
+
+            Set<Long> ids = txs.stream().map(Transaction::getId).collect(Collectors.toSet());
+            for (Transaction tx : incoming) {
+                if (!ids.contains(tx.getId())) {
+                    txs.add(tx);
+                    ids.add(tx.getId());
+                }
+            }
         } else {
-            txs = transactionRepository.findByTimestampBetween(start, end);
+            txs = transactionRepository.findByValueGreaterThanEqualAndTimestampBetween(effectiveMin, start, end)
+                    .stream()
+                    .filter(tx -> tx.getValue() <= effectiveMax)
+                    .collect(Collectors.toList());
         }
 
         double totalValue = txs.stream()
@@ -115,6 +138,22 @@ public class FlowService {
                 .filter(tx -> tx.getToAddress() != null)
                 .collect(Collectors.groupingBy(Transaction::getToAddress));
 
+        // Calculate real flows (from -> to)
+        List<Object[]> flowRows = transactionRepository.groupByFlowBetween(start, end, effectiveMin, effectiveMax);
+        List<Map<String, Object>> flows = flowRows.stream()
+                .map(row -> {
+                    Map<String, Object> m = new LinkedHashMap<>();
+                    m.put("from", row[0]);
+                    m.put("to", row[1]);
+                    m.put("value", row[2]);
+                    m.put("count", row[3]);
+                    return m;
+                })
+                .sorted((a, b) -> Double.compare(((Number) b.get("value")).doubleValue(),
+                        ((Number) a.get("value")).doubleValue()))
+                .limit(50) // Return top 50 flows for better performance
+                .collect(Collectors.toList());
+
         FlowAggregateDto dto = new FlowAggregateDto();
         dto.setTransactionCount(txs.size());
         dto.setTotalTransferredValue(totalValue);
@@ -123,6 +162,7 @@ public class FlowService {
         dto.setUniqueReceivers(uniqueReceivers);
         dto.setTopSenders(topMap(senderGroups));
         dto.setTopReceivers(topMap(receiverGroups));
+        dto.setFlows(flows);
 
         return dto;
     }

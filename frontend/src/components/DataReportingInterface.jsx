@@ -14,6 +14,25 @@ const DataReportingInterface = () => {
   );
   const [loading, setLoading] = useState(false);
   const [reportData, setReportData] = useState(null);
+  const [totalElements, setTotalElements] = useState(0);
+  const [totalPages, setTotalPages] = useState(0);
+  const [selectedPreset, setSelectedPreset] = useState("7d");
+
+  const applyPreset = (preset) => {
+    const today = new Date();
+    const toStr = (d) => d.toISOString().split("T")[0];
+    setSelectedPreset(preset);
+    setEndDate(toStr(today));
+    if (preset === "24h") {
+      setStartDate(toStr(new Date(today - 24 * 60 * 60 * 1000)));
+    } else if (preset === "7d") {
+      setStartDate(toStr(new Date(today - 7 * 24 * 60 * 60 * 1000)));
+    } else if (preset === "30d") {
+      setStartDate(toStr(new Date(today - 30 * 24 * 60 * 60 * 1000)));
+    } else if (preset === "90d") {
+      setStartDate(toStr(new Date(today - 90 * 24 * 60 * 60 * 1000)));
+    }
+  };
 
   const generateReport = async () => {
     setLoading(true);
@@ -28,7 +47,9 @@ const DataReportingInterface = () => {
       );
       if (!response.ok) throw new Error("Failed to fetch report");
       const data = await response.json();
-      setReportData(data);
+      setReportData(data.content ?? []);
+      setTotalElements(data.totalElements ?? 0);
+      setTotalPages(data.totalPages ?? 1);
     } catch (error) {
       console.error("Error generating report:", error);
       alert("Error generating report. Ensure backend is running.");
@@ -177,6 +198,24 @@ const DataReportingInterface = () => {
                 </h2>
 
                 <div className="space-y-4">
+                  {/* Quick presets */}
+                  <div className="flex flex-wrap gap-2">
+                    {[["24h", "Last 24h"], ["7d", "Last 7 days"], ["30d", "Last 30 days"], ["90d", "Last 90 days"]].map(([key, label]) => (
+                      <button
+                        key={key}
+                        type="button"
+                        onClick={() => applyPreset(key)}
+                        className={`px-3 py-1 text-xs font-semibold border ${
+                          selectedPreset === key
+                            ? "bg-gray-900 text-white border-gray-900"
+                            : "bg-white text-gray-700 border-gray-300 hover:border-gray-600"
+                        }`}
+                      >
+                        {label}
+                      </button>
+                    ))}
+                  </div>
+
                   {/* Time Range */}
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                     <div>
@@ -188,7 +227,7 @@ const DataReportingInterface = () => {
                         <input
                           type="date"
                           value={startDate}
-                          onChange={(e) => setStartDate(e.target.value)}
+                          onChange={(e) => { setStartDate(e.target.value); setSelectedPreset(null); }}
                           className="flex-1 text-sm text-gray-700 bg-transparent border-none outline-none"
                         />
                       </div>
@@ -203,7 +242,7 @@ const DataReportingInterface = () => {
                         <input
                           type="date"
                           value={endDate}
-                          onChange={(e) => setEndDate(e.target.value)}
+                          onChange={(e) => { setEndDate(e.target.value); setSelectedPreset(null); }}
                           className="flex-1 text-sm text-gray-700 bg-transparent border-none outline-none"
                         />
                       </div>
@@ -236,7 +275,7 @@ const DataReportingInterface = () => {
                       Report Results
                     </h2>
                     <span className="text-xs text-gray-600">
-                      {reportData.length} records found
+                      {totalElements.toLocaleString()} records found{totalPages > 1 ? ` (showing first ${reportData.length})` : ""}
                     </span>
                     <button
                       onClick={downloadCSV}

@@ -1,13 +1,9 @@
 import React, { useState, useEffect } from "react";
 import { supabase } from "../utils/supabase";
 import { useNavigate } from "react-router-dom";
-import Sidebar from "./Sidebar";
-import SidebarToggleButton from "./SidebarToggleButton";
-import { useSidebarToggle } from "../hooks/useSidebarToggle";
 
 export default function LoginPage() {
     const navigate = useNavigate();
-    const { isSidebarOpen, toggleSidebar } = useSidebarToggle(false);
     const [view, setView] = useState("login"); // 'login', 'register', 'forgot-password'
     const [email, setEmail] = useState("");
     const [password, setPassword] = useState("");
@@ -86,25 +82,6 @@ export default function LoginPage() {
 
     return (
         <div className="bg-gray-50 min-h-screen flex flex-col lg:flex-row w-full relative">
-            <div className="fixed top-4 left-4 z-50 bg-white border border-gray-300">
-                <SidebarToggleButton
-                    isSidebarOpen={isSidebarOpen}
-                    onToggle={toggleSidebar}
-                />
-            </div>
-
-            {isSidebarOpen && (
-                <>
-                    <div
-                        className="fixed inset-0 bg-black bg-opacity-30 z-30"
-                        onClick={toggleSidebar}
-                    />
-                    <div className="fixed left-0 top-0 z-40 h-full">
-                        <Sidebar isOpen={isSidebarOpen} onToggle={toggleSidebar} />
-                    </div>
-                </>
-            )}
-
             {/* Left Side */}
             <div className="w-full lg:w-1/2 flex items-center justify-center px-6 py-12 lg:px-12 bg-white">
                 <div className="w-full max-w-md">
