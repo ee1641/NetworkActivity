@@ -6,4 +6,5 @@ import java.util.List;
 
 public interface ClusterRepository extends JpaRepository<Cluster, Long> {
     List<Cluster> findByEntityType(String entityType);
+    List<Cluster> findByNameContainingIgnoreCase(String name);
 }

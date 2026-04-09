@@ -1,6 +1,10 @@
 package edu.rit.NetworkActivity.service;
 
+import edu.rit.NetworkActivity.data.entity.Block;
+import edu.rit.NetworkActivity.data.entity.Address;
 import edu.rit.NetworkActivity.data.entity.Transaction;
+import edu.rit.NetworkActivity.data.repository.AddressRepository;
+import edu.rit.NetworkActivity.data.repository.BlockRepository;
 import edu.rit.NetworkActivity.data.repository.TransactionRepository;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -40,14 +44,20 @@ public class TransactionIngestionService {
 
     private final VeChainThorClient thorClient;
     private final TransactionRepository transactionRepository;
+    private final BlockRepository blockRepository;
+    private final AddressRepository addressRepository;
 
     private Long lastIngestedBlock = null;
     private boolean initialized = false;
 
     public TransactionIngestionService(VeChainThorClient thorClient,
-                                       TransactionRepository transactionRepository) {
+                                       TransactionRepository transactionRepository,
+                                       BlockRepository blockRepository,
+                                       AddressRepository addressRepository) {
         this.thorClient = thorClient;
         this.transactionRepository = transactionRepository;
+        this.blockRepository = blockRepository;
+        this.addressRepository = addressRepository;
     }
 
     @Scheduled(fixedRate = 10_000)
@@ -107,6 +117,15 @@ public class TransactionIngestionService {
                 Instant.ofEpochSecond(rawTimestamp.longValue()), ZoneOffset.UTC);
         long blockNumber = rawNumber.longValue();
 
+        // Ensure the parent block row exists before inserting transactions (FK constraint).
+        if (blockRepository.findByBlockNumber(blockNumber).isEmpty()) {
+            Block b = new Block();
+            b.setBlockNumber(blockNumber);
+            b.setBlockHash((String) block.get("id"));
+            b.setTimestamp(ts);
+            blockRepository.save(b);
+        }
+
         List<Map<String, Object>> transactions =
                 (List<Map<String, Object>>) block.get("transactions");
         if (transactions == null || transactions.isEmpty()) return 0;
@@ -115,6 +134,9 @@ public class TransactionIngestionService {
         for (Map<String, Object> tx : transactions) {
             String txId = (String) tx.get("id");
             if (txId == null) continue;
+
+            // Avoid duplicates on restart/catch-up.
+            if (transactionRepository.findByTxHash(txId).isPresent()) continue;
 
             String origin = (String) tx.get("origin");
             Boolean reverted = (Boolean) tx.get("reverted");
@@ -134,6 +156,10 @@ public class TransactionIngestionService {
                 totalVet += hexWeiToNative(hexValue);
             }
 
+            // Ensure address rows exist before inserting transactions (FK constraint).
+            upsertAddress(origin, ts);
+            upsertAddress(primaryTo, ts);
+
             // Gas fee in VTHO
             double gasFee = hexWeiToNative((String) tx.get("paid"));
 
@@ -151,6 +177,20 @@ public class TransactionIngestionService {
             saved++;
         }
         return saved;
+    }
+
+    private void upsertAddress(String addressStr, OffsetDateTime ts) {
+        if (addressStr == null || addressStr.isBlank()) return;
+        if (addressRepository.findByAddressIgnoreCase(addressStr).isPresent()) return;
+
+        Address a = new Address();
+        a.setAddress(addressStr);
+        a.setType("unknown");
+        a.setBalance(0.0f);
+        a.setRiskScore(0.0f);
+        a.setFirstSeen(ts);
+        a.setLastActive(ts);
+        addressRepository.save(a);
     }
 
     /**

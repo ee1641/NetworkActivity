@@ -112,3 +112,64 @@ export const fetchClusterStats = async (start, end) => {
   );
   return handleResponse(response);
 };
+
+export const fetchClusters = async ({
+  search,
+  entityType,
+  sortBy,
+} = {}) => {
+  const params = new URLSearchParams();
+  if (search) params.append("search", search);
+  if (entityType) params.append("entityType", entityType);
+  if (sortBy) params.append("sortBy", sortBy);
+
+  const qs = params.toString();
+  const response = await fetch(`${API_BASE_URL}/api/clusters${qs ? `?${qs}` : ""}`);
+  return handleResponse(response);
+};
+
+export const fetchCluster = async (clusterId) => {
+  const response = await fetch(`${API_BASE_URL}/api/clusters/${clusterId}`);
+  return handleResponse(response);
+};
+
+export const updateCluster = async (clusterId, update) => {
+  const response = await fetch(`${API_BASE_URL}/api/clusters/${clusterId}`, {
+    method: "PUT",
+    headers: {
+      "Content-Type": "application/json",
+      Accept: "application/json",
+    },
+    body: JSON.stringify(update ?? {}),
+  });
+  return handleResponse(response);
+};
+
+export const createCluster = async (create) => {
+  const response = await fetch(`${API_BASE_URL}/api/clusters`, {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+      Accept: "application/json",
+    },
+    body: JSON.stringify(create ?? {}),
+  });
+  return handleResponse(response);
+};
+
+export const fetchClusterEvents = async (clusterId) => {
+  const response = await fetch(`${API_BASE_URL}/api/clusters/${clusterId}/events`);
+  return handleResponse(response);
+};
+
+export const mergeClusters = async ({ sourceClusterId, targetClusterId }) => {
+  const response = await fetch(`${API_BASE_URL}/api/clusters/merge`, {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+      Accept: "application/json",
+    },
+    body: JSON.stringify({ sourceClusterId, targetClusterId }),
+  });
+  return handleResponse(response);
+};
