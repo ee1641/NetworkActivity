@@ -53,4 +53,8 @@ public interface TransactionRepository extends JpaRepository<Transaction, Long> 
                         @Param("end") OffsetDateTime end,
                         @Param("minVol") Float minVol,
                         @Param("maxVol") Float maxVol);
+
+        List<Transaction> findByToAddressInAndTimestampBetween(List<String> addresses,
+                        OffsetDateTime start,
+                        OffsetDateTime end);
 }

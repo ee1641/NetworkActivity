@@ -57,6 +57,17 @@ export function createApp(thor) {
     }
   });
 
+  // GET /tx/:id/receipt  (transaction receipt — gasUsed, paid, reverted, outputs)
+  app.get("/tx/:id/receipt", async (req, res) => {
+    try {
+      const receipt = await thor.transactions.getTransactionReceipt(req.params.id);
+      if (!receipt) return res.status(404).json({ error: "Receipt not found" });
+      res.json(receipt);
+    } catch (e) {
+      res.status(500).json({ error: String(e) });
+    }
+  });
+
   // GET /account/:address
   app.get("/account/:address", async (req, res) => {
     try {

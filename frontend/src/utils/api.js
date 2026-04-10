@@ -120,3 +120,61 @@ export const fetchClusterStats = async (start, end) => {
   );
   return handleResponse(response);
 };
+
+export const fetchRiskSummary = async (
+  start,
+  end,
+  anomalyThreshold,
+  largeTxThreshold,
+  activitySpikePercent,
+) => {
+  const params = new URLSearchParams();
+  if (start) params.append("start", start);
+  if (end) params.append("end", end);
+  if (anomalyThreshold != null) params.append("anomalyThreshold", anomalyThreshold);
+  if (largeTxThreshold != null) params.append("largeTxThreshold", largeTxThreshold);
+  if (activitySpikePercent != null) params.append("activitySpikePercent", activitySpikePercent);
+
+  const response = await fetch(
+    `${API_BASE_URL}/api/risk/summary?${params.toString()}`,
+  );
+  return handleResponse(response);
+};
+
+export const fetchRiskAnomalyTimeSeries = async (start, end) => {
+  const params = new URLSearchParams();
+  if (start) params.append("start", start);
+  if (end) params.append("end", end);
+
+  const response = await fetch(
+    `${API_BASE_URL}/api/risk/anomaly-timeseries?${params.toString()}`,
+  );
+  return handleResponse(response);
+};
+
+export const fetchRiskIncidents = async (start, end, largeTxThreshold, limit = 20) => {
+  const params = new URLSearchParams();
+  if (start) params.append("start", start);
+  if (end) params.append("end", end);
+  if (largeTxThreshold != null) params.append("largeTxThreshold", largeTxThreshold);
+  params.append("limit", limit);
+
+  const response = await fetch(
+    `${API_BASE_URL}/api/risk/incidents?${params.toString()}`,
+  );
+  return handleResponse(response);
+};
+
+export const fetchRiskAlertConfig = async () => {
+  const response = await fetch(`${API_BASE_URL}/api/risk/alert-config`);
+  return handleResponse(response);
+};
+
+export const saveRiskAlertConfig = async (cfg) => {
+  const response = await fetch(`${API_BASE_URL}/api/risk/alert-config`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(cfg),
+  });
+  return handleResponse(response);
+};
