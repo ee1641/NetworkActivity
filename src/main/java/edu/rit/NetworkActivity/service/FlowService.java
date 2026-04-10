@@ -102,7 +102,7 @@ public class FlowService {
         } else {
             txs = transactionRepository.findByValueGreaterThanEqualAndTimestampBetween(effectiveMin, start, end)
                     .stream()
-                    .filter(tx -> tx.getValue() <= effectiveMax)
+                    .filter(tx -> tx.getValue() == null || tx.getValue() <= effectiveMax)
                     .collect(Collectors.toList());
         }
 

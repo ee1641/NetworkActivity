@@ -4,6 +4,7 @@ import SidebarToggleButton from "./SidebarToggleButton";
 import { useSidebarToggle } from "../hooks/useSidebarToggle";
 import {
   createCluster,
+  addWalletToCluster,
   fetchClusterEvents,
   fetchClusters,
   mergeClusters,
@@ -42,6 +43,11 @@ const WalletClusteringAnalysis = () => {
   const [mergeSourceId, setMergeSourceId] = useState("");
   const [merging, setMerging] = useState(false);
   const [mergeError, setMergeError] = useState(null);
+
+  const [walletToAdd, setWalletToAdd] = useState("");
+  const [addingWallet, setAddingWallet] = useState(false);
+  const [addWalletError, setAddWalletError] = useState(null);
+  const [addWalletSuccess, setAddWalletSuccess] = useState(null);
 
   const selectedCluster = useMemo(() => {
     if (selectedClusterId == null) return null;
@@ -274,6 +280,24 @@ const WalletClusteringAnalysis = () => {
     URL.revokeObjectURL(url);
   };
 
+  const onAddWallet = async () => {
+    if (!selectedCluster) return;
+    setAddingWallet(true);
+    setAddWalletError(null);
+    setAddWalletSuccess(null);
+    try {
+      await addWalletToCluster(selectedCluster.clusterId, walletToAdd);
+      setAddWalletSuccess("Wallet added to cluster.");
+      setWalletToAdd("");
+      const ev = await fetchClusterEvents(selectedCluster.clusterId);
+      setEvents(Array.isArray(ev) ? ev : []);
+    } catch (e) {
+      setAddWalletError(e?.message || "Failed to add wallet");
+    } finally {
+      setAddingWallet(false);
+    }
+  };
+
   const formatEventTs = (iso) => {
     try {
       return new Date(iso).toLocaleString();
@@ -369,10 +393,6 @@ const WalletClusteringAnalysis = () => {
             >
               <i className="fas fa-plus" />
               <span>New Cluster</span>
-            </button>
-            <button className="px-4 py-2 bg-gray-900 text-white text-sm hover:bg-gray-800 flex items-center space-x-2">
-              <i className="fas fa-code-branch" />
-              <span>Split Cluster</span>
             </button>
           </div>
         </div>
@@ -760,6 +780,38 @@ const WalletClusteringAnalysis = () => {
               </h3>
 
               <div className="space-y-3 text-xs">
+                <div className="pb-3 border-b border-gray-200">
+                  <label className="text-gray-600 mb-1 block">
+                    Add Wallet Address to Cluster
+                  </label>
+                  <div className="flex gap-2">
+                    <input
+                      type="text"
+                      value={walletToAdd}
+                      onChange={(e) => setWalletToAdd(e.target.value)}
+                      disabled={!selectedCluster || addingWallet}
+                      placeholder="0x..."
+                      className="flex-1 px-3 py-2 border border-gray-300 text-sm text-gray-900 focus:outline-none focus:border-gray-500"
+                    />
+                    <button
+                      className="px-4 py-2 bg-gray-900 text-white text-sm hover:bg-gray-800 disabled:opacity-50"
+                      onClick={onAddWallet}
+                      disabled={!selectedCluster || addingWallet || !walletToAdd.trim()}
+                    >
+                      {addingWallet ? "Adding…" : "Add"}
+                    </button>
+                  </div>
+                  {addWalletError && (
+                    <div className="mt-2 text-sm text-red-700 bg-red-50 border border-red-200 px-3 py-2">
+                      {addWalletError}
+                    </div>
+                  )}
+                  {addWalletSuccess && (
+                    <div className="mt-2 text-sm text-green-700 bg-green-50 border border-green-200 px-3 py-2">
+                      {addWalletSuccess}
+                    </div>
+                  )}
+                </div>
                 {saveError && (
                   <div className="text-sm text-red-700 bg-red-50 border border-red-200 px-3 py-2">
                     {saveError}

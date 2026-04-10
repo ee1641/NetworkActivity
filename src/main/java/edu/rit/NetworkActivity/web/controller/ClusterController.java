@@ -1,7 +1,9 @@
 package edu.rit.NetworkActivity.web.controller;
 
 import edu.rit.NetworkActivity.service.ClusterService;
+import edu.rit.NetworkActivity.service.ClusterWalletService;
 import edu.rit.NetworkActivity.service.dto.ClusterDto;
+import edu.rit.NetworkActivity.service.dto.ClusterAddWalletRequest;
 import edu.rit.NetworkActivity.service.dto.ClusterCreateRequest;
 import edu.rit.NetworkActivity.service.dto.ClusterEventDto;
 import edu.rit.NetworkActivity.service.dto.ClusterMergeRequest;
@@ -17,9 +19,11 @@ import java.util.List;
 public class ClusterController {
 
     private final ClusterService clusterService;
+    private final ClusterWalletService clusterWalletService;
 
-    public ClusterController(ClusterService clusterService) {
+    public ClusterController(ClusterService clusterService, ClusterWalletService clusterWalletService) {
         this.clusterService = clusterService;
+        this.clusterWalletService = clusterWalletService;
     }
 
     @GetMapping
@@ -62,6 +66,16 @@ public class ClusterController {
         ClusterDto dto = clusterService.merge(request);
         if (dto == null) return ResponseEntity.badRequest().build();
         return ResponseEntity.ok(dto);
+    }
+
+    @PostMapping("/{id}/wallets")
+    public ResponseEntity<Void> addWallet(@PathVariable Long id, @RequestBody ClusterAddWalletRequest request) {
+        try {
+            clusterWalletService.addWalletToCluster(id, request == null ? null : request.getAddress());
+            return ResponseEntity.noContent().build();
+        } catch (IllegalArgumentException e) {
+            return ResponseEntity.badRequest().build();
+        }
     }
 }
 

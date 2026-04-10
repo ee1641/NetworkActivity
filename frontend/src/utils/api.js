@@ -239,3 +239,21 @@ export const mergeClusters = async ({ sourceClusterId, targetClusterId }) => {
   });
   return handleResponse(response);
 };
+
+export const addWalletToCluster = async (clusterId, address) => {
+  const response = await fetch(`${API_BASE_URL}/api/clusters/${clusterId}/wallets`, {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+      Accept: "application/json",
+    },
+    body: JSON.stringify({ address }),
+  });
+  if (!response.ok) {
+    const error = await response
+      .json()
+      .catch(() => ({ message: "Unknown error" }));
+    throw new Error(error.message || `HTTP error! status: ${response.status}`);
+  }
+  return null;
+};
