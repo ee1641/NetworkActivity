@@ -55,16 +55,38 @@ public class VeChainThorClient {
     }
 
     /**
-     * Fetches a transaction by its 0x-prefixed transaction ID.
+     * Fetches a transaction by its 0x-prefixed transaction ID, merged with its
+     * receipt so that gasUsed, paid, reverted, and outputs are all present.
      * Returns null when the transaction is not found.
      */
     public Map<String, Object> getTransaction(String txId) {
         try {
             @SuppressWarnings("unchecked")
-            Map<String, Object> result = restTemplate.getForObject(
+            Map<String, Object> tx = restTemplate.getForObject(
                     thorServiceBaseUrl + "/tx/" + txId,
                     Map.class);
-            return result;
+            if (tx == null) return null;
+
+            // Merge receipt fields (gasUsed, paid, reverted, outputs) into the tx map
+            try {
+                @SuppressWarnings("unchecked")
+                Map<String, Object> receipt = restTemplate.getForObject(
+                        thorServiceBaseUrl + "/tx/" + txId + "/receipt",
+                        Map.class);
+                if (receipt != null) {
+                    tx.put("gasUsed", receipt.get("gasUsed"));
+                    tx.put("paid",    receipt.get("paid"));
+                    tx.put("reward",  receipt.get("reward"));
+                    tx.put("reverted", receipt.get("reverted"));
+                    if (receipt.containsKey("outputs")) {
+                        tx.put("outputs", receipt.get("outputs"));
+                    }
+                }
+            } catch (Exception ignored) {
+                // Receipt fetch failure is non-fatal — tx body is still returned
+            }
+
+            return tx;
         } catch (HttpClientErrorException.NotFound e) {
             return null;
         }

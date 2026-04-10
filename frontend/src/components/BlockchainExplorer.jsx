@@ -322,8 +322,10 @@ const BlockchainExplorer = () => {
                               </div>
                               <div>
                                 <div className="text-gray-500 mb-1">Data</div>
-                                <div className="font-mono text-gray-900 truncate">
-                                  {clause.data === "0x" || !clause.data ? "None" : clause.data.slice(0, 20) + "…"}
+                                <div className="font-mono text-gray-900 truncate" title={clause.data || "0x"}>
+                                  {!clause.data || clause.data === "0x"
+                                    ? <span className="text-gray-400">0x (empty)</span>
+                                    : clause.data.slice(0, 22) + "…"}
                                 </div>
                               </div>
                             </div>
