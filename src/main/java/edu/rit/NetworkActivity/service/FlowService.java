@@ -238,6 +238,49 @@ public class FlowService {
                 .collect(Collectors.toList());
     }
 
+    /**
+     * Returns transaction volume aggregated by hour for the dashboard chart.
+     */
+    public List<Map<String, Object>> getVolumeTimeSeries(OffsetDateTime start, OffsetDateTime end) {
+        List<Object[]> rows = transactionRepository.getVolumeByHour(start, end);
+        List<Map<String, Object>> result = new ArrayList<>();
+        for (Object[] row : rows) {
+            Map<String, Object> map = new LinkedHashMap<>();
+            map.put("ts", row[0].toString());
+            map.put("count", row[1]);
+            result.add(map);
+        }
+        return result;
+    }
+
+    /**
+     * PROXY LOGIC FOR GROUP COLLABORATION:
+     * This method categories active addresses (hotspots) as "clusters" for the dashboard metrics.
+     * TODO: Future teammates should replace this placeholder logic with real clustering 
+     * algorithms (e.g., K-Means or Heuristic-based wallet grouping).
+     */
+    public Map<String, Object> getClusterStatistics(OffsetDateTime start, OffsetDateTime end) {
+        List<Object[]> aggregated = transactionRepository.groupByReceiverBetween(start, end);
+        
+        long high = 0;
+        long medium = 0;
+        long low = 0;
+        
+        for (Object[] row : aggregated) {
+            long txCount = ((Number) row[1]).longValue();
+            if (txCount > 20) high++;      // High activity threshold
+            else if (txCount > 5) medium++; // Medium activity threshold
+            else low++;                     // Low activity
+        }
+        
+        Map<String, Object> stats = new LinkedHashMap<>();
+        stats.put("totalClusters", aggregated.size());
+        stats.put("highActivity", high);
+        stats.put("mediumActivity", medium);
+        stats.put("lowActivity", low);
+        return stats;
+    }
+
     private List<Map<String, Object>> topMap(Map<String, List<Transaction>> groupedEntries) {
         return groupedEntries.entrySet().stream()
                 .map(e -> {

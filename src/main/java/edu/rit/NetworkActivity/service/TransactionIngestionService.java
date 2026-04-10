@@ -1,11 +1,16 @@
 package edu.rit.NetworkActivity.service;
 
+import edu.rit.NetworkActivity.data.entity.Address;
+import edu.rit.NetworkActivity.data.entity.Block;
 import edu.rit.NetworkActivity.data.entity.Transaction;
+import edu.rit.NetworkActivity.data.repository.AddressRepository;
+import edu.rit.NetworkActivity.data.repository.BlockRepository;
 import edu.rit.NetworkActivity.data.repository.TransactionRepository;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 
 import java.math.BigInteger;
 import java.time.Instant;
@@ -13,11 +18,12 @@ import java.time.OffsetDateTime;
 import java.time.ZoneOffset;
 import java.util.List;
 import java.util.Map;
+import java.util.Optional;
 
 /**
  * Pulls live blocks from VeChain via the thor-sdk and stores transactions in the DB.
  *
- * On first startup (empty DB): backfills INITIAL_BACKFILL_BLOCKS of history.
+ * On first startup (empty DB): backfill INITIAL_BACKFILL_BLOCKS of history.
  * On restart: resumes from the max block_number already stored.
  * Live sync: stays within LIVE_THRESHOLD blocks of the chain head.
  */
@@ -30,7 +36,7 @@ public class TransactionIngestionService {
     private static final int INITIAL_BACKFILL_BLOCKS = 8_640;
 
     /** Blocks to process per scheduled run during catch-up. */
-    private static final int CATCHUP_BATCH = 50;
+    private static final int CATCHUP_BATCH = 200;
 
     /** Blocks to process per scheduled run during live sync. */
     private static final int LIVE_BATCH = 5;
@@ -40,17 +46,24 @@ public class TransactionIngestionService {
 
     private final VeChainThorClient thorClient;
     private final TransactionRepository transactionRepository;
+    private final BlockRepository blockRepository;
+    private final AddressRepository addressRepository;
 
     private Long lastIngestedBlock = null;
     private boolean initialized = false;
 
     public TransactionIngestionService(VeChainThorClient thorClient,
-                                       TransactionRepository transactionRepository) {
+                                       TransactionRepository transactionRepository,
+                                       BlockRepository blockRepository,
+                                       AddressRepository addressRepository) {
         this.thorClient = thorClient;
         this.transactionRepository = transactionRepository;
+        this.blockRepository = blockRepository;
+        this.addressRepository = addressRepository;
     }
 
     @Scheduled(fixedRate = 10_000)
+    @Transactional
     public void ingest() {
         try {
             var summary = thorClient.getSummary();
@@ -60,9 +73,20 @@ public class TransactionIngestionService {
 
             if (!initialized) {
                 Long dbMax = transactionRepository.findMaxBlockNumber().orElse(null);
-                lastIngestedBlock = dbMax != null
+                long candidate = dbMax != null
                         ? dbMax
                         : Math.max(0L, bestBlock - INITIAL_BACKFILL_BLOCKS);
+
+                // If we're too far behind the chain head, skip ahead to near live.
+                // This avoids hours of catch-up and shows dashboard data immediately.
+                if ((bestBlock - candidate) > LIVE_THRESHOLD) {
+                    log.info("Gap too large ({} blocks behind), skipping to near chain head",
+                            bestBlock - candidate);
+                    lastIngestedBlock = bestBlock - LIVE_THRESHOLD;
+                } else {
+                    lastIngestedBlock = candidate;
+                }
+
                 initialized = true;
                 log.info("TransactionIngestionService initialized: lastIngestedBlock={}, bestBlock={}",
                         lastIngestedBlock, bestBlock);
@@ -96,19 +120,28 @@ public class TransactionIngestionService {
 
     @SuppressWarnings("unchecked")
     private int ingestBlock(long blockNum) {
-        Map<String, Object> block = thorClient.getBlockExpanded(String.valueOf(blockNum));
-        if (block == null) return 0;
+        Map<String, Object> blockData = thorClient.getBlockExpanded(String.valueOf(blockNum));
+        if (blockData == null) return 0;
 
-        Number rawTimestamp = (Number) block.get("timestamp");
-        Number rawNumber = (Number) block.get("number");
+        Number rawTimestamp = (Number) blockData.get("timestamp");
+        Number rawNumber = (Number) blockData.get("number");
         if (rawTimestamp == null || rawNumber == null) return 0;
 
         OffsetDateTime ts = OffsetDateTime.ofInstant(
                 Instant.ofEpochSecond(rawTimestamp.longValue()), ZoneOffset.UTC);
         long blockNumber = rawNumber.longValue();
 
+        // Ensure block exists in DB to satisfy foreign key constraints in transactions table
+        if (blockRepository.findByBlockNumber(blockNumber).isEmpty()) {
+            Block block = new Block();
+            block.setBlockNumber(blockNumber);
+            block.setBlockHash((String) blockData.get("id"));
+            block.setTimestamp(ts);
+            blockRepository.save(block);
+        }
+
         List<Map<String, Object>> transactions =
-                (List<Map<String, Object>>) block.get("transactions");
+                (List<Map<String, Object>>) blockData.get("transactions");
         if (transactions == null || transactions.isEmpty()) return 0;
 
         int saved = 0;
@@ -137,6 +170,12 @@ public class TransactionIngestionService {
             // Gas fee in VTHO
             double gasFee = hexWeiToNative((String) tx.get("paid"));
 
+            // Ensure addresses exist to satisfy foreign key constraints
+            getOrCreateAddress(origin, ts);
+            if (primaryTo != null) {
+                getOrCreateAddress(primaryTo, ts);
+            }
+
             Transaction transaction = new Transaction();
             transaction.setTxHash(txId);
             transaction.setFromAddress(origin);
@@ -151,6 +190,20 @@ public class TransactionIngestionService {
             saved++;
         }
         return saved;
+    }
+
+    private void getOrCreateAddress(String addr, OffsetDateTime ts) {
+        if (addr == null) return;
+        if (addressRepository.findByAddress(addr).isEmpty()) {
+            Address address = new Address();
+            address.setAddress(addr);
+            address.setFirstSeen(ts);
+            address.setLastActive(ts);
+            address.setType("unknown");
+            address.setBalance(0.0f);
+            address.setRiskScore(0.0f);
+            addressRepository.save(address);
+        }
     }
 
     /**

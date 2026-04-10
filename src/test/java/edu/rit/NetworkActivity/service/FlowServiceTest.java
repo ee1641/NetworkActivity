@@ -240,4 +240,79 @@ class FlowServiceTest {
         assertTrue(result.get(0).getTimestamp().isAfter(result.get(1).getTimestamp())
                 || result.get(0).getTimestamp().isEqual(result.get(1).getTimestamp()));
     }
+
+    // ── getVolumeTimeSeries tests ──
+
+    @Test
+    void getVolumeTimeSeries_mapsRowsCorrectly() {
+        List<Object[]> rows = new ArrayList<>();
+        rows.add(new Object[]{"2025-01-01T00:00:00Z", 5L});
+        rows.add(new Object[]{"2025-01-01T01:00:00Z", 12L});
+        when(transactionRepository.getVolumeByHour(START, END)).thenReturn(rows);
+
+        List<Map<String, Object>> result = flowService.getVolumeTimeSeries(START, END);
+
+        assertEquals(2, result.size());
+        assertEquals("2025-01-01T00:00:00Z", result.get(0).get("ts"));
+        assertEquals(5L, result.get(0).get("count"));
+        assertEquals("2025-01-01T01:00:00Z", result.get(1).get("ts"));
+        assertEquals(12L, result.get(1).get("count"));
+    }
+
+    @Test
+    void getVolumeTimeSeries_emptyRowsReturnsEmptyList() {
+        when(transactionRepository.getVolumeByHour(START, END)).thenReturn(Collections.emptyList());
+
+        List<Map<String, Object>> result = flowService.getVolumeTimeSeries(START, END);
+
+        assertTrue(result.isEmpty());
+    }
+
+    // ── getClusterStatistics tests ──
+
+    @Test
+    void getClusterStatistics_bucketsCorrectly() {
+        List<Object[]> rows = new ArrayList<>();
+        rows.add(new Object[]{"0xHIGH1", 25L, 100.0});  // >20 → high
+        rows.add(new Object[]{"0xHIGH2", 21L, 50.0});   // >20 → high
+        rows.add(new Object[]{"0xMED1",  10L, 30.0});   // >5 → medium
+        rows.add(new Object[]{"0xMED2",   6L, 20.0});   // >5 → medium
+        rows.add(new Object[]{"0xLOW1",   5L, 10.0});   // ≤5 → low
+        rows.add(new Object[]{"0xLOW2",   1L, 5.0});    // ≤5 → low
+        when(transactionRepository.groupByReceiverBetween(START, END)).thenReturn(rows);
+
+        Map<String, Object> stats = flowService.getClusterStatistics(START, END);
+
+        assertEquals(6, stats.get("totalClusters"));
+        assertEquals(2L, stats.get("highActivity"));
+        assertEquals(2L, stats.get("mediumActivity"));
+        assertEquals(2L, stats.get("lowActivity"));
+    }
+
+    @Test
+    void getClusterStatistics_emptyDataReturnsZeros() {
+        when(transactionRepository.groupByReceiverBetween(START, END)).thenReturn(Collections.emptyList());
+
+        Map<String, Object> stats = flowService.getClusterStatistics(START, END);
+
+        assertEquals(0, stats.get("totalClusters"));
+        assertEquals(0L, stats.get("highActivity"));
+        assertEquals(0L, stats.get("mediumActivity"));
+        assertEquals(0L, stats.get("lowActivity"));
+    }
+
+    @Test
+    void getClusterStatistics_boundaryValues() {
+        List<Object[]> rows = new ArrayList<>();
+        rows.add(new Object[]{"0xEXACT20", 20L, 100.0});  // exactly 20 → medium (not high)
+        rows.add(new Object[]{"0xEXACT5",   5L, 50.0});   // exactly 5  → low (not medium)
+        when(transactionRepository.groupByReceiverBetween(START, END)).thenReturn(rows);
+
+        Map<String, Object> stats = flowService.getClusterStatistics(START, END);
+
+        assertEquals(2, stats.get("totalClusters"));
+        assertEquals(0L, stats.get("highActivity"));
+        assertEquals(1L, stats.get("mediumActivity"));
+        assertEquals(1L, stats.get("lowActivity"));
+    }
 }

@@ -38,7 +38,9 @@ public class TransactionSyncService {
         this.addressRepository = addressRepository;
     }
 
-    @Scheduled(fixedRate = 30000) // Every 30 seconds
+    // DISABLED: TransactionIngestionService handles block syncing with better backfill
+    // and batching logic. Running both simultaneously exhausts Supabase's connection pool.
+    // @Scheduled(fixedRate = 30000)
     public void syncTransactions() {
         try {
             VeChainSummaryDto summary = veChainClient.getSummary();

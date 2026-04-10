@@ -42,4 +42,11 @@ public interface TransactionRepository extends JpaRepository<Transaction, Long> 
            "GROUP BY t.toAddress")
     List<Object[]> countByReceiverBetween(@Param("start") OffsetDateTime start,
                                           @Param("end") OffsetDateTime end);
+
+    @Query(value = "SELECT date_trunc('hour', timestamp) as hr, COUNT(*) as count " +
+                   "FROM transactions " +
+                   "WHERE timestamp BETWEEN :start AND :end " +
+                   "GROUP BY hr ORDER BY hr ASC", nativeQuery = true)
+    List<Object[]> getVolumeByHour(@Param("start") OffsetDateTime start,
+                                   @Param("end") OffsetDateTime end);
 }

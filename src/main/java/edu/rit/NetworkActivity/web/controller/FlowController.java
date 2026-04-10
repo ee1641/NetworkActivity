@@ -10,6 +10,7 @@ import org.springframework.web.bind.annotation.*;
 
 import java.time.OffsetDateTime;
 import java.util.List;
+import java.util.Map;
 
 @RestController
 @RequestMapping("/api/flows")
@@ -32,6 +33,28 @@ public class FlowController {
         OffsetDateTime startDate = start != null ? OffsetDateTime.parse(start) : endDate.minusHours(24);
 
         return flowService.getAggregate(startDate, endDate, address);
+    }
+
+    @GetMapping("/volume-timeseries")
+    public List<Map<String, Object>> volumeTimeSeries(
+            @RequestParam(required = false) String start,
+            @RequestParam(required = false) String end) {
+
+        OffsetDateTime endDate = end != null ? OffsetDateTime.parse(end) : OffsetDateTime.now();
+        OffsetDateTime startDate = start != null ? OffsetDateTime.parse(start) : endDate.minusHours(24);
+
+        return flowService.getVolumeTimeSeries(startDate, endDate);
+    }
+
+    @GetMapping("/cluster-stats")
+    public Map<String, Object> clusterStats(
+            @RequestParam(required = false) String start,
+            @RequestParam(required = false) String end) {
+
+        OffsetDateTime endDate = end != null ? OffsetDateTime.parse(end) : OffsetDateTime.now();
+        OffsetDateTime startDate = start != null ? OffsetDateTime.parse(start) : endDate.minusHours(24);
+
+        return flowService.getClusterStatistics(startDate, endDate);
     }
 
     @GetMapping("/address/{address}")
