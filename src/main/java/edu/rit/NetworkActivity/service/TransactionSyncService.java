@@ -75,6 +75,11 @@ public class TransactionSyncService {
                     ZoneOffset.UTC);
         }
 
+        if (blockRepository.findByBlockNumber(blockNumber).isPresent()) {
+            log.debug("Block {} already exists, skipping", blockNumber);
+            return;
+        }
+
         Block block = new Block();
         block.setBlockNumber(blockNumber);
         block.setBlockHash((String) blockData.get("id"));
