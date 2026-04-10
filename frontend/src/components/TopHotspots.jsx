@@ -49,7 +49,6 @@ const TopHotspots = () => {
   const navigate = useNavigate();
 
   // Filter / sort state
-  const [category, setCategory] = useState("All Categories");
   const [timeRange, setTimeRange] = useState("Last 30 Days");
   const [sortBy, setSortBy] = useState("transactions");
   const [page, setPage] = useState(0);
@@ -63,15 +62,7 @@ const TopHotspots = () => {
   const [totalVolume, setTotalVolume] = useState(0);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
-  const [categories, setCategories] = useState([]);
   const [largeTransfers, setLargeTransfers] = useState(null);
-
-  // Load distinct categories from DB once on mount
-  useEffect(() => {
-    api.fetchLabelCategories()
-      .then(setCategories)
-      .catch(() => setCategories([]));
-  }, []);
 
   // Load large-transfer count whenever the time range changes
   useEffect(() => {
@@ -91,7 +82,6 @@ const TopHotspots = () => {
         const data = await api.fetchHotspots({
           start,
           end,
-          category,
           sortBy,
           page,
           pageSize: PAGE_SIZE,
@@ -123,12 +113,7 @@ const TopHotspots = () => {
 
     run();
     return () => { cancelled = true; };
-  }, [category, timeRange, sortBy, page, refreshKey]);
-
-  const handleCategoryChange = (e) => {
-    setCategory(e.target.value);
-    setPage(0);
-  };
+  }, [timeRange, sortBy, page, refreshKey]);
 
   const handleTimeRangeChange = (e) => {
     setTimeRange(e.target.value);
@@ -293,34 +278,18 @@ const TopHotspots = () => {
 
           {/* Filter and Sort Controls */}
           <div className="bg-white border border-gray-300 p-4 mb-6">
-            <div className="flex flex-col md:flex-row md:items-center md:justify-between space-y-3 md:space-y-0">
-              <div className="flex flex-col sm:flex-row gap-3">
-                <div className="flex items-center space-x-2 border border-gray-300 px-3 py-2 bg-white">
-                  <i className="fas fa-filter text-gray-600 text-sm" />
-                  <select
-                    value={category}
-                    onChange={handleCategoryChange}
-                    className="text-sm text-gray-700 bg-transparent border-none outline-none"
-                  >
-                    <option value="All Categories">All Categories</option>
-                    {categories.map((cat) => (
-                      <option key={cat} value={cat}>{cat}</option>
-                    ))}
-                  </select>
-                </div>
-
-                <div className="flex items-center space-x-2 border border-gray-300 px-3 py-2 bg-white">
-                  <i className="fas fa-calendar text-gray-600 text-sm" />
-                  <select
-                    value={timeRange}
-                    onChange={handleTimeRangeChange}
-                    className="text-sm text-gray-700 bg-transparent border-none outline-none"
-                  >
-                    <option>Last 30 Days</option>
-                    <option>Last 7 Days</option>
-                    <option>Last 24 Hours</option>
-                  </select>
-                </div>
+            <div className="flex flex-col sm:flex-row items-center gap-3 justify-between">
+              <div className="flex items-center space-x-2 border border-gray-300 px-3 py-2 bg-white">
+                <i className="fas fa-calendar text-gray-600 text-sm" />
+                <select
+                  value={timeRange}
+                  onChange={handleTimeRangeChange}
+                  className="text-sm text-gray-700 bg-transparent border-none outline-none"
+                >
+                  <option>Last 30 Days</option>
+                  <option>Last 7 Days</option>
+                  <option>Last 24 Hours</option>
+                </select>
               </div>
 
               <div className="flex items-center space-x-2 border border-gray-300 px-3 py-2 bg-white">
@@ -353,9 +322,7 @@ const TopHotspots = () => {
               <div className="bg-white border border-gray-300 p-8 text-center text-gray-500">
                 No hotspots found for this period.
                 <div className="mt-2 text-xs text-gray-400">
-                  {category !== "All Categories"
-                    ? 'No activity found for this category — try "All Categories".'
-                    : 'The ingestion service is collecting live VeChain blocks. Try "Last 30 Days" or check back after the service has been running for a while.'}
+                  The ingestion service is collecting live VeChain blocks. Try "Last 30 Days" or check back after the service has been running for a while.
                 </div>
               </div>
             ) : (
