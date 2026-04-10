@@ -35,4 +35,7 @@ public interface LabelRepository extends JpaRepository<Label, Long> {
         order by l.labelName asc
     """)
     List<Label> searchLabels(String query);
+
+    @Query("select distinct l.category from Label l where l.category is not null and l.category <> '' order by l.category asc")
+    List<String> findDistinctCategories();
 }

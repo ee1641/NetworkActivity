@@ -63,6 +63,23 @@ const TopHotspots = () => {
   const [totalVolume, setTotalVolume] = useState(0);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
+  const [categories, setCategories] = useState([]);
+  const [largeTransfers, setLargeTransfers] = useState(null);
+
+  // Load distinct categories from DB once on mount
+  useEffect(() => {
+    api.fetchLabelCategories()
+      .then(setCategories)
+      .catch(() => setCategories([]));
+  }, []);
+
+  // Load large-transfer count whenever the time range changes
+  useEffect(() => {
+    const { start, end } = timeRangeToStartEnd(timeRange);
+    api.fetchRiskSummary(start, end)
+      .then((data) => setLargeTransfers(data.largeTransfers))
+      .catch(() => setLargeTransfers(null));
+  }, [timeRange, refreshKey]);
 
   useEffect(() => {
     let cancelled = false;
@@ -264,13 +281,13 @@ const TopHotspots = () => {
 
             <div className="bg-white border border-gray-300 p-5">
               <div className="flex items-center justify-between mb-2">
-                <div className="text-xs text-gray-600">Critical Alerts</div>
+                <div className="text-xs text-gray-600">Large Transfers</div>
                 <i className="fas fa-exclamation-triangle text-gray-400" />
               </div>
-              <div className="text-2xl font-bold text-gray-900">N/A</div>
-              <div className="text-xs text-gray-600 mt-1">
-                No alert data available
+              <div className="text-2xl font-bold text-gray-900">
+                {largeTransfers === null ? "—" : largeTransfers.toLocaleString()}
               </div>
+              <div className="text-xs text-gray-600 mt-1">Transactions ≥ 1,000 VET</div>
             </div>
           </div>
 
@@ -285,13 +302,10 @@ const TopHotspots = () => {
                     onChange={handleCategoryChange}
                     className="text-sm text-gray-700 bg-transparent border-none outline-none"
                   >
-                    <option>All Categories</option>
-                    <option>Unknown</option>
-                    <option>DeFi Protocols</option>
-                    <option>NFT Marketplaces</option>
-                    <option>DEX Platforms</option>
-                    <option>Lending Protocols</option>
-                    <option>Wallet Services</option>
+                    <option value="All Categories">All Categories</option>
+                    {categories.map((cat) => (
+                      <option key={cat} value={cat}>{cat}</option>
+                    ))}
                   </select>
                 </div>
 
@@ -340,8 +354,8 @@ const TopHotspots = () => {
                 No hotspots found for this period.
                 <div className="mt-2 text-xs text-gray-400">
                   {category !== "All Categories"
-                    ? 'Most addresses are unlabeled — try "All Categories" or "Unknown".'
-                    : "The ingestion service is collecting live VeChain blocks. Try \"Last 30 Days\" or check back after the service has been running for a while."}
+                    ? 'No activity found for this category — try "All Categories".'
+                    : 'The ingestion service is collecting live VeChain blocks. Try "Last 30 Days" or check back after the service has been running for a while.'}
                 </div>
               </div>
             ) : (

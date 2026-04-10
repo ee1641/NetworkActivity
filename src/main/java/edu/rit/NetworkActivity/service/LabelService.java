@@ -27,6 +27,10 @@ public class LabelService {
         this.labelHistoryRepository = labelHistoryRepository;
     }
 
+    public List<String> getDistinctCategories() {
+        return labelRepository.findDistinctCategories();
+    }
+
     public List<LabelDto> getAll(String category, String entityName, String source, String address) {
         return labelRepository.findAll().stream()
                 .filter(label -> matchesEqualsIgnoreCase(label.getCategory(), category))

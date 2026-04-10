@@ -20,6 +20,11 @@ public class LabelController {
         this.labelService = labelService;
     }
 
+    @GetMapping("/categories")
+    public List<String> getCategories() {
+        return labelService.getDistinctCategories();
+    }
+
     @GetMapping
     public List<LabelDto> getAll(
             @RequestParam(required = false) String category,

@@ -31,6 +31,11 @@ export const fetchAggregate = async (
   return handleResponse(response);
 };
 
+export const fetchLabelCategories = async () => {
+  const response = await fetch(`${API_BASE_URL}/api/labels/categories`);
+  return handleResponse(response);
+};
+
 export const fetchHotspots = async ({
   start,
   end,
