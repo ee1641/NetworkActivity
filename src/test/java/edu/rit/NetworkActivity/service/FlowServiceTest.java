@@ -8,7 +8,6 @@ import edu.rit.NetworkActivity.service.dto.FlowAddressSummaryDto;
 import edu.rit.NetworkActivity.service.dto.FlowAggregateDto;
 import edu.rit.NetworkActivity.service.dto.HotspotDto;
 import edu.rit.NetworkActivity.service.dto.HotspotPageDto;
-import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.InjectMocks;
@@ -21,7 +20,6 @@ import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
 import java.util.Map;
-import java.util.Optional;
 
 import static org.junit.jupiter.api.Assertions.*;
 import static org.mockito.Mockito.*;
@@ -57,8 +55,10 @@ class FlowServiceTest {
                 Transaction t2 = tx(2L, "0xAAA", "0xCCC", 20.0f, 1.0f);
                 Transaction t3 = tx(3L, "0xDDD", "0xBBB", 5.0f, 0.2f);
 
-                when(transactionRepository.findByTimestampBetween(START, END))
+                when(transactionRepository.findByValueGreaterThanEqualAndTimestampBetween(0.0f, START, END))
                                 .thenReturn(List.of(t1, t2, t3));
+                when(transactionRepository.groupByFlowBetween(eq(START), eq(END), anyFloat(), anyFloat()))
+                                .thenReturn(Collections.emptyList());
 
                 FlowAggregateDto dto = flowService.getAggregate(START, END, null, null, null);
 
@@ -89,8 +89,10 @@ class FlowServiceTest {
         void getAggregate_handlesNullValues() {
                 Transaction t1 = tx(1L, "0xAAA", "0xBBB", null, null);
 
-                when(transactionRepository.findByTimestampBetween(START, END))
+                when(transactionRepository.findByValueGreaterThanEqualAndTimestampBetween(0.0f, START, END))
                                 .thenReturn(List.of(t1));
+                when(transactionRepository.groupByFlowBetween(eq(START), eq(END), anyFloat(), anyFloat()))
+                                .thenReturn(Collections.emptyList());
 
                 FlowAggregateDto dto = flowService.getAggregate(START, END, null, null, null);
 
@@ -101,8 +103,10 @@ class FlowServiceTest {
 
         @Test
         void getAggregate_emptyTransactionsReturnsZeros() {
-                when(transactionRepository.findByTimestampBetween(START, END))
+                when(transactionRepository.findByValueGreaterThanEqualAndTimestampBetween(0.0f, START, END))
                                 .thenReturn(List.of());
+                when(transactionRepository.groupByFlowBetween(eq(START), eq(END), anyFloat(), anyFloat()))
+                                .thenReturn(Collections.emptyList());
 
                 FlowAggregateDto dto = flowService.getAggregate(START, END, null, null, null);
 
@@ -117,8 +121,10 @@ class FlowServiceTest {
                 Transaction t1 = tx(1L, "0xLOW", "0xABC", 5.0f, 0.1f);
                 Transaction t2 = tx(2L, "0xHIGH", "0xABC", 50.0f, 0.2f);
 
-                when(transactionRepository.findByTimestampBetween(START, END))
+                when(transactionRepository.findByValueGreaterThanEqualAndTimestampBetween(0.0f, START, END))
                                 .thenReturn(List.of(t1, t2));
+                when(transactionRepository.groupByFlowBetween(eq(START), eq(END), anyFloat(), anyFloat()))
+                                .thenReturn(Collections.emptyList());
 
                 FlowAggregateDto dto = flowService.getAggregate(START, END, null, null, null);
 

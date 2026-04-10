@@ -38,3 +38,8 @@ build/
 ### Frontend ###
 node_modules/
 package-lock.json
+
+.claude/
+.mcp.json
+CLAUDE.md
+frontend/package-lock.json

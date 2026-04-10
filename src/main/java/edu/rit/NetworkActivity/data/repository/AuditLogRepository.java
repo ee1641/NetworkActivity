@@ -8,4 +8,5 @@ import java.util.UUID;
 public interface AuditLogRepository extends JpaRepository<AuditLog, Long> {
     List<AuditLog> findByUserId(UUID userId);
     List<AuditLog> findByActionType(String actionType);
+    List<AuditLog> findByEntityAffectedOrderByTimestampDesc(String entityAffected);
 }

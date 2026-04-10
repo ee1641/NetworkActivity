@@ -1,5 +1,7 @@
 package edu.rit.NetworkActivity.service;
 
+import edu.rit.NetworkActivity.data.entity.Block;
+import edu.rit.NetworkActivity.data.entity.Address;
 import edu.rit.NetworkActivity.data.entity.Address;
 import edu.rit.NetworkActivity.data.entity.Block;
 import edu.rit.NetworkActivity.data.entity.Transaction;
@@ -151,6 +153,9 @@ public class TransactionIngestionService {
             String txId = (String) tx.get("id");
             if (txId == null) continue;
 
+            // Avoid duplicates on restart/catch-up.
+            if (transactionRepository.findByTxHash(txId).isPresent()) continue;
+
             String origin = (String) tx.get("origin");
             Boolean reverted = (Boolean) tx.get("reverted");
 
@@ -168,6 +173,10 @@ public class TransactionIngestionService {
                 String hexValue = (String) clause.get("value");
                 totalVet += hexWeiToNative(hexValue);
             }
+
+            // Ensure address rows exist before inserting transactions (FK constraint).
+            upsertAddress(origin, ts);
+            upsertAddress(primaryTo, ts);
 
             // Gas fee in VTHO
             double gasFee = hexWeiToNative((String) tx.get("paid"));
@@ -192,6 +201,20 @@ public class TransactionIngestionService {
             saved++;
         }
         return saved;
+    }
+
+    private void upsertAddress(String addressStr, OffsetDateTime ts) {
+        if (addressStr == null || addressStr.isBlank()) return;
+        if (addressRepository.findByAddressIgnoreCase(addressStr).isPresent()) return;
+
+        Address a = new Address();
+        a.setAddress(addressStr);
+        a.setType("unknown");
+        a.setBalance(0.0f);
+        a.setRiskScore(0.0f);
+        a.setFirstSeen(ts);
+        a.setLastActive(ts);
+        addressRepository.save(a);
     }
 
     private void ensureAddress(String addr, OffsetDateTime ts) {
