@@ -131,25 +131,15 @@ public class TransactionIngestionService {
                 Instant.ofEpochSecond(rawTimestamp.longValue()), ZoneOffset.UTC);
         long blockNumber = rawNumber.longValue();
 
-<<<<<<< HEAD
-        // Ensure block exists in DB to satisfy foreign key constraints in transactions table
-        if (blockRepository.findByBlockNumber(blockNumber).isEmpty()) {
-            Block block = new Block();
-            block.setBlockNumber(blockNumber);
-            block.setBlockHash((String) blockData.get("id"));
-            block.setTimestamp(ts);
-            blockRepository.save(block);
-=======
         // Ensure block row exists before inserting transactions (FK constraint)
         if (blockRepository.findByBlockNumber(blockNumber).isEmpty()) {
             Block blockEntity = new Block();
             blockEntity.setBlockNumber(blockNumber);
-            blockEntity.setBlockHash((String) block.get("id"));
-            Number rawSize = (Number) block.get("size");
+            blockEntity.setBlockHash((String) blockData.get("id"));
+            Number rawSize = (Number) blockData.get("size");
             if (rawSize != null) blockEntity.setSize(rawSize.floatValue());
             blockEntity.setTimestamp(ts);
             blockRepository.save(blockEntity);
->>>>>>> 2f5074596d73e0593047a511fe20f8a97a08bfea
         }
 
         List<Map<String, Object>> transactions =
@@ -182,16 +172,11 @@ public class TransactionIngestionService {
             // Gas fee in VTHO
             double gasFee = hexWeiToNative((String) tx.get("paid"));
 
-<<<<<<< HEAD
             // Ensure addresses exist to satisfy foreign key constraints
-            getOrCreateAddress(origin, ts);
-            if (primaryTo != null) {
-                getOrCreateAddress(primaryTo, ts);
-            }
-=======
             ensureAddress(origin, ts);
-            ensureAddress(primaryTo, ts);
->>>>>>> 2f5074596d73e0593047a511fe20f8a97a08bfea
+            if (primaryTo != null) {
+                ensureAddress(primaryTo, ts);
+            }
 
             Transaction transaction = new Transaction();
             transaction.setTxHash(txId);
@@ -209,8 +194,7 @@ public class TransactionIngestionService {
         return saved;
     }
 
-<<<<<<< HEAD
-    private void getOrCreateAddress(String addr, OffsetDateTime ts) {
+    private void ensureAddress(String addr, OffsetDateTime ts) {
         if (addr == null) return;
         if (addressRepository.findByAddress(addr).isEmpty()) {
             Address address = new Address();
@@ -221,19 +205,6 @@ public class TransactionIngestionService {
             address.setBalance(0.0f);
             address.setRiskScore(0.0f);
             addressRepository.save(address);
-=======
-    private void ensureAddress(String addr, OffsetDateTime ts) {
-        if (addr == null) return;
-        if (addressRepository.findByAddress(addr).isEmpty()) {
-            Address a = new Address();
-            a.setAddress(addr);
-            a.setFirstSeen(ts);
-            a.setLastActive(ts);
-            a.setType("unknown");
-            a.setBalance(0.0f);
-            a.setRiskScore(0.0f);
-            addressRepository.save(a);
->>>>>>> 2f5074596d73e0593047a511fe20f8a97a08bfea
         }
     }
 
