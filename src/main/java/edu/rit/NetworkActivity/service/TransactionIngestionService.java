@@ -65,7 +65,6 @@ public class TransactionIngestionService {
     }
 
     @Scheduled(fixedRate = 10_000)
-    @Transactional
     public void ingest() {
         try {
             var summary = thorClient.getSummary();
@@ -74,7 +73,7 @@ public class TransactionIngestionService {
             long bestBlock = summary.getBestBlockNumber();
 
             if (!initialized) {
-                Long dbMax = transactionRepository.findMaxBlockNumber().orElse(null);
+                Long dbMax = blockRepository.findMaxBlockNumber().orElse(null);
                 long candidate = dbMax != null
                         ? dbMax
                         : Math.max(0L, bestBlock - INITIAL_BACKFILL_BLOCKS);
