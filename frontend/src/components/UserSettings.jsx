@@ -1,11 +1,106 @@
-import React, { useState } from "react";
+import React, { useEffect, useMemo, useState } from "react";
 import Sidebar from "./Sidebar";
 import SidebarToggleButton from "./SidebarToggleButton";
 import { useSidebarToggle } from "../hooks/useSidebarToggle";
+import { supabase } from "../utils/supabase";
 
 const UserSettings = () => {
   const [activeTab, setActiveTab] = useState("account");
   const { isSidebarOpen, toggleSidebar } = useSidebarToggle();
+
+  const [userEmail, setUserEmail] = useState("");
+  const [authProvider, setAuthProvider] = useState(null);
+
+  const [currentPassword, setCurrentPassword] = useState("");
+  const [newPassword, setNewPassword] = useState("");
+  const [confirmNewPassword, setConfirmNewPassword] = useState("");
+  const [passwordSaving, setPasswordSaving] = useState(false);
+  const [passwordError, setPasswordError] = useState(null);
+  const [passwordSuccess, setPasswordSuccess] = useState(null);
+
+  useEffect(() => {
+    const syncUser = (session) => {
+      const user = session?.user;
+      setUserEmail(user?.email ?? "");
+      setAuthProvider(user?.app_metadata?.provider ?? null);
+    };
+
+    supabase.auth.getSession().then(({ data: { session } }) => {
+      syncUser(session);
+    });
+
+    const {
+      data: { subscription },
+    } = supabase.auth.onAuthStateChange((_event, session) => {
+      syncUser(session);
+    });
+
+    return () => subscription.unsubscribe();
+  }, []);
+
+  const passwordChangeDisabled = useMemo(() => {
+    const p = (authProvider ?? "").toLowerCase();
+    return p === "google" || p === "github";
+  }, [authProvider]);
+
+  const resetPasswordForm = () => {
+    setCurrentPassword("");
+    setNewPassword("");
+    setConfirmNewPassword("");
+    setPasswordError(null);
+    setPasswordSuccess(null);
+  };
+
+  const onUpdatePassword = async (e) => {
+    e.preventDefault();
+    if (passwordChangeDisabled) return;
+
+    setPasswordError(null);
+    setPasswordSuccess(null);
+
+    if (!userEmail) {
+      setPasswordError("You are not signed in.");
+      return;
+    }
+
+    if (!currentPassword.trim()) {
+      setPasswordError("Enter your current password.");
+      return;
+    }
+
+    if (newPassword.length < 8) {
+      setPasswordError("New password must be at least 8 characters.");
+      return;
+    }
+
+    if (newPassword !== confirmNewPassword) {
+      setPasswordError("New passwords do not match.");
+      return;
+    }
+
+    setPasswordSaving(true);
+    try {
+      const { error: signInErr } = await supabase.auth.signInWithPassword({
+        email: userEmail,
+        password: currentPassword,
+      });
+      if (signInErr) throw signInErr;
+
+      const { error: updateErr } = await supabase.auth.updateUser({
+        password: newPassword,
+      });
+      if (updateErr) throw updateErr;
+
+      setPasswordSuccess("Password updated successfully.");
+      setCurrentPassword("");
+      setNewPassword("");
+      setConfirmNewPassword("");
+    } catch (err) {
+      setPasswordError(err?.message ?? "Could not update password.");
+    } finally {
+      setPasswordSaving(false);
+    }
+  };
 
   return (
     <div className="bg-gray-50 min-h-screen flex flex-col">
@@ -24,6 +119,13 @@ const UserSettings = () => {
               Blockchain Analytics
             </span>
           </div>
+          <button
+            type="button"
+            onClick={() => supabase.auth.signOut()}
+            className="text-sm text-gray-700 px-3 py-1.5 border border-gray-300 hover:bg-gray-100 transition-colors"
+          >
+            Sign Out
+          </button>
         </div>
       </header>
 
@@ -66,114 +168,125 @@ const UserSettings = () => {
             {activeTab === "account" && (
               <div id="account" className="tab-content p-6">
                 <div className="max-w-3xl">
-                  {/* Email Section */}
+                  {/* Email (read-only) */}
                   <div className="mb-8">
                     <h3 className="text-sm font-semibold text-gray-900 mb-4 flex items-center">
                       Email Address
                       <i
                         className="fas fa-info-circle text-gray-400 ml-2 text-xs cursor-help"
-                        title="Your primary email for account notifications"
+                        title="Your account email from sign-in"
                       />
                     </h3>
-                    <div className="space-y-4">
-                      <div>
-                        <label className="block text-sm text-gray-700 mb-2">
-                          Current Email
-                        </label>
-                        <input
-                          type="email"
-                          defaultValue="user@example.com"
-                          className="w-full px-4 py-2 border border-gray-300 bg-gray-50 text-gray-900 text-sm focus:outline-none focus:border-gray-900"
-                        />
-                      </div>
-                      <div>
-                        <label className="block text-sm text-gray-700 mb-2">
-                          New Email
-                        </label>
-                        <input
-                          type="email"
-                          placeholder="Enter new email address"
-                          className="w-full px-4 py-2 border border-gray-300 text-gray-900 text-sm focus:outline-none focus:border-gray-900"
-                        />
-                      </div>
-                      <div>
-                        <label className="block text-sm text-gray-700 mb-2">
-                          Confirm Password
-                        </label>
-                        <input
-                          type="password"
-                          placeholder="Enter your password to confirm"
-                          className="w-full px-4 py-2 border border-gray-300 text-gray-900 text-sm focus:outline-none focus:border-gray-900"
-                        />
+                    <div>
+                      <label className="block text-sm text-gray-700 mb-2">
+                        Email
+                      </label>
+                      <div className="w-full px-4 py-2 border border-gray-300 bg-gray-50 text-gray-900 text-sm">
+                        {userEmail || "—"}
                       </div>
                     </div>
                   </div>
 
                   <div className="border-t border-gray-300 my-8" />
 
-                  {/* Password Change Section */}
-                  <div className="mb-8">
+                  {/* Password Change */}
+                  <form
+                    className={`mb-2 ${passwordChangeDisabled ? "pointer-events-none" : ""}`}
+                    onSubmit={onUpdatePassword}
+                    aria-disabled={passwordChangeDisabled}
+                  >
                     <h3 className="text-sm font-semibold text-gray-900 mb-4 flex items-center">
                       Change Password
                       <i
                         className="fas fa-info-circle text-gray-400 ml-2 text-xs cursor-help"
-                        title="Password must be at least 8 characters with uppercase, lowercase, and numbers"
+                        title="At least 8 characters. Use a strong, unique password."
                       />
                     </h3>
+
+                    {passwordChangeDisabled && (
+                      <div className="text-sm text-gray-600 bg-gray-50 border border-gray-200 px-3 py-2 mb-4 pointer-events-auto">
+                        You signed in with {authProvider === "github" ? "GitHub" : "Google"}. Passwords for this account
+                        are managed by your provider—use their security settings if you need to change how you sign in.
+                      </div>
+                    )}
+
+                    {passwordError && (
+                      <div className="text-sm text-red-700 bg-red-50 border border-red-200 px-3 py-2 mb-4">
+                        {passwordError}
+                      </div>
+                    )}
+                    {passwordSuccess && (
+                      <div className="text-sm text-green-800 bg-green-50 border border-green-200 px-3 py-2 mb-4">
+                        {passwordSuccess}
+                      </div>
+                    )}
+
                     <div className="space-y-4">
                       <div>
-                        <label className="block text-sm text-gray-700 mb-2">
+                        <label className="block text-sm text-gray-700 mb-2" htmlFor="settings-current-password">
                           Current Password
                         </label>
                         <input
+                          id="settings-current-password"
                           type="password"
+                          autoComplete="current-password"
+                          value={currentPassword}
+                          onChange={(e) => setCurrentPassword(e.target.value)}
                           placeholder="Enter current password"
-                          className="w-full px-4 py-2 border border-gray-300 text-gray-900 text-sm focus:outline-none focus:border-gray-900"
+                          disabled={passwordSaving || passwordChangeDisabled}
+                          className="w-full px-4 py-2 border border-gray-300 text-gray-900 text-sm focus:outline-none focus:border-gray-900 disabled:bg-gray-100 disabled:text-gray-500"
                         />
                       </div>
                       <div>
-                        <label className="block text-sm text-gray-700 mb-2">
+                        <label className="block text-sm text-gray-700 mb-2" htmlFor="settings-new-password">
                           New Password
                         </label>
                         <input
+                          id="settings-new-password"
                           type="password"
+                          autoComplete="new-password"
+                          value={newPassword}
+                          onChange={(e) => setNewPassword(e.target.value)}
                           placeholder="Enter new password"
-                          className="w-full px-4 py-2 border border-gray-300 text-gray-900 text-sm focus:outline-none focus:border-gray-900"
+                          disabled={passwordSaving || passwordChangeDisabled}
+                          className="w-full px-4 py-2 border border-gray-300 text-gray-900 text-sm focus:outline-none focus:border-gray-900 disabled:bg-gray-100 disabled:text-gray-500"
                         />
-                        <div className="mt-2 flex items-center space-x-2">
-                          <div className="flex-1 h-1 bg-gray-200" />
-                          <div className="flex-1 h-1 bg-gray-200" />
-                          <div className="flex-1 h-1 bg-gray-200" />
-                          <div className="flex-1 h-1 bg-gray-200" />
-                        </div>
-                        <p className="text-xs text-gray-500 mt-1">
-                          Password strength: Not set
-                        </p>
                       </div>
                       <div>
-                        <label className="block text-sm text-gray-700 mb-2">
+                        <label className="block text-sm text-gray-700 mb-2" htmlFor="settings-confirm-password">
                           Confirm New Password
                         </label>
                         <input
+                          id="settings-confirm-password"
                           type="password"
+                          autoComplete="new-password"
+                          value={confirmNewPassword}
+                          onChange={(e) => setConfirmNewPassword(e.target.value)}
                           placeholder="Confirm new password"
-                          className="w-full px-4 py-2 border border-gray-300 text-gray-900 text-sm focus:outline-none focus:border-gray-900"
+                          disabled={passwordSaving || passwordChangeDisabled}
+                          className="w-full px-4 py-2 border border-gray-300 text-gray-900 text-sm focus:outline-none focus:border-gray-900 disabled:bg-gray-100 disabled:text-gray-500"
                         />
                       </div>
                     </div>
-                  </div>
 
-                  <div className="border-t border-gray-300 my-8" />
-
-                  {/* Action Buttons */}
-                  <div className="flex items-center space-x-3 pt-6 border-t border-gray-300">
-                    <button className="px-6 py-2 bg-gray-900 text-white text-sm font-medium hover:bg-gray-800">
-                      Save Changes
-                    </button>
-                    <button className="px-6 py-2 border border-gray-300 text-gray-700 text-sm font-medium hover:bg-gray-50">
-                      Cancel
-                    </button>
-                  </div>
+                    <div className="flex items-center space-x-3 pt-6 border-t border-gray-300 mt-8 pointer-events-auto">
+                      <button
+                        type="submit"
+                        disabled={passwordSaving || !userEmail || passwordChangeDisabled}
+                        className="px-6 py-2 bg-gray-900 text-white text-sm font-medium hover:bg-gray-800 disabled:opacity-50 disabled:cursor-not-allowed"
+                      >
+                        {passwordSaving ? "Updating…" : "Update password"}
+                      </button>
+                      <button
+                        type="button"
+                        onClick={resetPasswordForm}
+                        disabled={passwordSaving || passwordChangeDisabled}
+                        className="px-6 py-2 border border-gray-300 text-gray-700 text-sm font-medium hover:bg-gray-50 disabled:opacity-50"
+                      >
+                        Clear
+                      </button>
+                    </div>
+                  </form>
                 </div>
               </div>
             )}

@@ -20,23 +20,40 @@ export default function UpdatePasswordPage() {
         if (hash && hash.includes("error_code=otp_expired")) {
             setError("This password reset link has expired. Please request a new one.");
         } else if (hash && hash.includes("error=")) {
-            // Try to extract the error description
-            const params = new URLSearchParams(hash.substring(1)); // remove #
+            const params = new URLSearchParams(hash.substring(1));
             const errorDescription = params.get("error_description");
             setError(errorDescription || "An error occurred with the reset link.");
         }
 
-        // Check if we have a session. If not, we can't update the password.
-        // However, Supabase might still be processing the hash to recover the session.
-        // So we wait a bit or listen for auth state change.
-        supabase.auth.getSession().then(({ data: { session } }) => {
-            if (!session && !hash) {
-                // If no session and no hash to recover from, redirect to login
-                // But if there IS a hash, we let Supabase process it.
+        let cancelled = false;
+
+        const checkSession = (session) => {
+            if (cancelled) return;
+            if (session) {
+                setError((prev) =>
+                    prev && prev.includes("No active session") ? null : prev,
+                );
+                return;
+            }
+            if (!hash) {
                 setError("No active session found. Please request a new password reset link.");
             }
+        };
+
+        supabase.auth.getSession().then(({ data: { session } }) => {
+            checkSession(session);
         });
 
+        const {
+            data: { subscription },
+        } = supabase.auth.onAuthStateChange((_event, session) => {
+            checkSession(session);
+        });
+
+        return () => {
+            cancelled = true;
+            subscription.unsubscribe();
+        };
     }, []);
 
     const handleUpdatePassword = async (e) => {
