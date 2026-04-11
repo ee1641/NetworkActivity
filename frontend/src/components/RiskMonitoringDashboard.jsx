@@ -203,6 +203,7 @@ const RiskMonitoringDashboard = () => {
 
   const handleRangeChange = (range) => {
     setDateRange(range);
+    loadingRef.current = false; // cancel any in-flight guard so this click always proceeds
     loadAll(range, config);
   };
 

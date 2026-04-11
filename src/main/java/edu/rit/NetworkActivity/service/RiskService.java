@@ -117,11 +117,15 @@ public class RiskService {
     public List<AnomalyPointDto> getAnomalyTimeSeries(OffsetDateTime start, OffsetDateTime end) {
         List<Transaction> txs = transactionRepository.findByTimestampBetween(start, end);
 
-        // Bucket by hour
+        long durationHours = java.time.Duration.between(start, end).toHours();
+        boolean bucketByDay = durationHours > 48;
+        long bucketSeconds = bucketByDay ? 86400L : 3600L;
+
+        // Bucket by hour or day depending on range
         TreeMap<Long, List<Transaction>> buckets = new TreeMap<>();
         for (Transaction tx : txs) {
-            long hourKey = tx.getTimestamp().toEpochSecond() / 3600;
-            buckets.computeIfAbsent(hourKey, k -> new ArrayList<>()).add(tx);
+            long key = tx.getTimestamp().toEpochSecond() / bucketSeconds;
+            buckets.computeIfAbsent(key, k -> new ArrayList<>()).add(tx);
         }
 
         if (buckets.isEmpty()) return List.of();
@@ -133,16 +137,20 @@ public class RiskService {
         double stddev = stddev(counts, mean);
 
         List<AnomalyPointDto> result = new ArrayList<>();
-        DateTimeFormatter fmt = DateTimeFormatter.ofPattern("HH:mm");
+        DateTimeFormatter fmt = bucketByDay
+                ? DateTimeFormatter.ofPattern("MMM dd")
+                : DateTimeFormatter.ofPattern("HH:mm");
         for (Map.Entry<Long, List<Transaction>> entry : buckets.entrySet()) {
             List<Transaction> bucket = entry.getValue();
             double count  = bucket.size();
             double zScore = stddev == 0 ? 0 : (count - mean) / stddev;
             double score  = Math.min(100, Math.max(0, 50 + zScore * 10));
 
-            String label = bucket.get(0).getTimestamp()
-                    .toLocalDateTime().withMinute(0).withSecond(0)
-                    .format(fmt);
+            String label = bucketByDay
+                    ? bucket.get(0).getTimestamp().toLocalDateTime()
+                            .withHour(0).withMinute(0).withSecond(0).format(fmt)
+                    : bucket.get(0).getTimestamp()
+                            .toLocalDateTime().withMinute(0).withSecond(0).format(fmt);
 
             // Top 3 most-active receivers in this hour bucket
             List<String> topAddresses = bucket.stream()
