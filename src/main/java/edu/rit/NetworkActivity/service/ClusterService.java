@@ -223,6 +223,8 @@ public class ClusterService {
         if (log == null) return "Cluster updated";
         String action = log.getActionType();
         if (action != null && action.equalsIgnoreCase("CLUSTER_CREATED")) return "Cluster created";
+        if (action != null && action.equalsIgnoreCase("CLUSTER_WALLET_ADDED")) return "Wallet added to cluster";
+        if (action != null && action.equalsIgnoreCase("CLUSTER_WALLET_REMOVED")) return "Wallet removed from cluster";
         return "Cluster updated";
     }
 
