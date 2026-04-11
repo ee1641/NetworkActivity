@@ -233,6 +233,11 @@ export const fetchClusterEvents = async (clusterId) => {
   return handleResponse(response);
 };
 
+export const fetchClusterWallets = async (clusterId) => {
+  const response = await fetch(`${API_BASE_URL}/api/clusters/${clusterId}/wallets`);
+  return handleResponse(response);
+};
+
 export const mergeClusters = async ({ sourceClusterId, targetClusterId }) => {
   const response = await fetch(`${API_BASE_URL}/api/clusters/merge`, {
     method: "POST",
@@ -254,6 +259,20 @@ export const addWalletToCluster = async (clusterId, address) => {
     },
     body: JSON.stringify({ address }),
   });
+  if (!response.ok) {
+    const error = await response
+      .json()
+      .catch(() => ({ message: "Unknown error" }));
+    throw new Error(error.message || `HTTP error! status: ${response.status}`);
+  }
+  return null;
+};
+
+export const removeWalletFromCluster = async (clusterId, walletId) => {
+  const response = await fetch(
+    `${API_BASE_URL}/api/clusters/${clusterId}/wallets/${walletId}`,
+    { method: "DELETE" },
+  );
   if (!response.ok) {
     const error = await response
       .json()

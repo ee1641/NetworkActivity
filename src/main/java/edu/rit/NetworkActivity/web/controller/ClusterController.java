@@ -8,6 +8,7 @@ import edu.rit.NetworkActivity.service.dto.ClusterCreateRequest;
 import edu.rit.NetworkActivity.service.dto.ClusterEventDto;
 import edu.rit.NetworkActivity.service.dto.ClusterMergeRequest;
 import edu.rit.NetworkActivity.service.dto.ClusterUpdateRequest;
+import edu.rit.NetworkActivity.service.dto.ClusterWalletDto;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
@@ -61,6 +62,12 @@ public class ClusterController {
         return ResponseEntity.ok(clusterService.events(id));
     }
 
+    @GetMapping("/{id}/wallets")
+    public ResponseEntity<List<ClusterWalletDto>> listWallets(@PathVariable Long id) {
+        if (clusterService.get(id) == null) return ResponseEntity.ok(List.of());
+        return ResponseEntity.ok(clusterWalletService.listWalletsForCluster(id));
+    }
+
     @PostMapping("/merge")
     public ResponseEntity<ClusterDto> merge(@RequestBody ClusterMergeRequest request) {
         ClusterDto dto = clusterService.merge(request);
@@ -73,6 +80,17 @@ public class ClusterController {
         try {
             clusterWalletService.addWalletToCluster(id, request == null ? null : request.getAddress());
             return ResponseEntity.noContent().build();
+        } catch (IllegalArgumentException e) {
+            return ResponseEntity.badRequest().build();
+        }
+    }
+
+    @DeleteMapping("/{id}/wallets/{walletId}")
+    public ResponseEntity<Void> removeWallet(@PathVariable Long id, @PathVariable Long walletId) {
+        if (clusterService.get(id) == null) return ResponseEntity.notFound().build();
+        try {
+            boolean removed = clusterWalletService.removeWalletFromCluster(id, walletId);
+            return removed ? ResponseEntity.noContent().build() : ResponseEntity.notFound().build();
         } catch (IllegalArgumentException e) {
             return ResponseEntity.badRequest().build();
         }

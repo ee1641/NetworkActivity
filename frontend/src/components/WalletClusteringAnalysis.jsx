@@ -6,7 +6,9 @@ import {
   createCluster,
   addWalletToCluster,
   deleteCluster,
+  removeWalletFromCluster,
   fetchClusterEvents,
+  fetchClusterWallets,
   fetchClusters,
   mergeClusters,
   updateCluster,
@@ -32,6 +34,12 @@ const WalletClusteringAnalysis = () => {
   const [events, setEvents] = useState([]);
   const [loadingEvents, setLoadingEvents] = useState(false);
   const [eventsError, setEventsError] = useState(null);
+
+  const [clusterWallets, setClusterWallets] = useState([]);
+  const [loadingWallets, setLoadingWallets] = useState(false);
+  const [walletsError, setWalletsError] = useState(null);
+  const [removingWalletId, setRemovingWalletId] = useState(null);
+  const [walletsRemoveError, setWalletsRemoveError] = useState(null);
 
   const [isCreateOpen, setIsCreateOpen] = useState(false);
   const [createName, setCreateName] = useState("");
@@ -138,25 +146,51 @@ const WalletClusteringAnalysis = () => {
       setEvents([]);
       setEventsError(null);
       setLoadingEvents(false);
+      setClusterWallets([]);
+      setWalletsError(null);
+      setLoadingWallets(false);
+      setWalletsRemoveError(null);
+      setRemovingWalletId(null);
       return undefined;
     }
 
     setLoadingEvents(true);
+    setLoadingWallets(true);
     setEventsError(null);
-    fetchClusterEvents(selectedClusterId)
-      .then((data) => {
-        if (cancelled) return;
-        setEvents(Array.isArray(data) ? data : []);
-      })
-      .catch((e) => {
-        if (cancelled) return;
+    setWalletsError(null);
+    setWalletsRemoveError(null);
+
+    Promise.allSettled([
+      fetchClusterEvents(selectedClusterId),
+      fetchClusterWallets(selectedClusterId),
+    ]).then((results) => {
+      if (cancelled) return;
+      const [evRes, wRes] = results;
+      if (evRes.status === "fulfilled") {
+        setEvents(Array.isArray(evRes.value) ? evRes.value : []);
+        setEventsError(null);
+      } else {
         setEvents([]);
-        setEventsError(e?.message || "Failed to load history");
-      })
-      .finally(() => {
-        if (cancelled) return;
-        setLoadingEvents(false);
-      });
+        const reason = evRes.reason;
+        setEventsError(
+          reason?.message || "Failed to load history",
+        );
+      }
+      if (wRes.status === "fulfilled") {
+        setClusterWallets(Array.isArray(wRes.value) ? wRes.value : []);
+        setWalletsError(null);
+      } else {
+        setClusterWallets([]);
+        const reason = wRes.reason;
+        setWalletsError(
+          reason?.message || "Failed to load wallets",
+        );
+      }
+    }).finally(() => {
+      if (cancelled) return;
+      setLoadingEvents(false);
+      setLoadingWallets(false);
+    });
 
     return () => {
       cancelled = true;
@@ -180,8 +214,12 @@ const WalletClusteringAnalysis = () => {
         ),
       );
 
-      const ev = await fetchClusterEvents(selectedCluster.clusterId);
+      const [ev, wallets] = await Promise.all([
+        fetchClusterEvents(selectedCluster.clusterId),
+        fetchClusterWallets(selectedCluster.clusterId),
+      ]);
       setEvents(Array.isArray(ev) ? ev : []);
+      setClusterWallets(Array.isArray(wallets) ? wallets : []);
     } catch (e) {
       setSaveError(e?.message || "Failed to save changes");
     } finally {
@@ -270,6 +308,7 @@ const WalletClusteringAnalysis = () => {
     const payload = {
       cluster: selectedCluster,
       events,
+      wallets: clusterWallets,
       exportedAt: new Date().toISOString(),
     };
     const blob = new Blob([JSON.stringify(payload, null, 2)], {
@@ -285,6 +324,25 @@ const WalletClusteringAnalysis = () => {
     URL.revokeObjectURL(url);
   };
 
+  const onRemoveWallet = async (walletId) => {
+    if (!selectedCluster || walletId == null) return;
+    setRemovingWalletId(walletId);
+    setWalletsRemoveError(null);
+    try {
+      await removeWalletFromCluster(selectedCluster.clusterId, walletId);
+      const [ev, wallets] = await Promise.all([
+        fetchClusterEvents(selectedCluster.clusterId),
+        fetchClusterWallets(selectedCluster.clusterId),
+      ]);
+      setEvents(Array.isArray(ev) ? ev : []);
+      setClusterWallets(Array.isArray(wallets) ? wallets : []);
+    } catch (e) {
+      setWalletsRemoveError(e?.message || "Failed to remove wallet");
+    } finally {
+      setRemovingWalletId(null);
+    }
+  };
+
   const onAddWallet = async () => {
     if (!selectedCluster) return;
     setAddingWallet(true);
@@ -294,8 +352,12 @@ const WalletClusteringAnalysis = () => {
       await addWalletToCluster(selectedCluster.clusterId, walletToAdd);
       setAddWalletSuccess("Wallet added to cluster.");
       setWalletToAdd("");
-      const ev = await fetchClusterEvents(selectedCluster.clusterId);
+      const [ev, wallets] = await Promise.all([
+        fetchClusterEvents(selectedCluster.clusterId),
+        fetchClusterWallets(selectedCluster.clusterId),
+      ]);
       setEvents(Array.isArray(ev) ? ev : []);
+      setClusterWallets(Array.isArray(wallets) ? wallets : []);
     } catch (e) {
       setAddWalletError(e?.message || "Failed to add wallet");
     } finally {
@@ -800,7 +862,9 @@ const WalletClusteringAnalysis = () => {
                 <div className="flex items-center justify-between pb-2 border-b border-gray-200">
                   <span className="text-gray-600">Total Wallets</span>
                   <span className="text-sm font-semibold text-gray-900">
-                    1,247
+                    {selectedCluster
+                      ? (loadingWallets ? "…" : clusterWallets.length.toLocaleString())
+                      : "—"}
                   </span>
                 </div>
 
@@ -972,51 +1036,110 @@ const WalletClusteringAnalysis = () => {
             </div>
           </div>
 
-          {/* History Timeline */}
-          <div className="bg-white border border-gray-300 p-5">
-            <h3 className="text-sm font-semibold text-gray-900 mb-4">
-              Cluster Change History
-            </h3>
+          {/* Wallets + history */}
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+            <div className="bg-white border border-gray-300 p-5">
+              <div className="flex items-center justify-between mb-4 gap-2">
+                <h3 className="text-sm font-semibold text-gray-900">
+                  Wallets in cluster
+                </h3>
+                {selectedCluster && !loadingWallets && !walletsError && (
+                  <span className="text-xs text-gray-600 bg-gray-100 px-2 py-1">
+                    {clusterWallets.length} total
+                  </span>
+                )}
+              </div>
 
-            <div className="space-y-4 text-xs">
-              {!selectedCluster && (
-                <div className="text-sm text-gray-600">Select a cluster to view history.</div>
-              )}
-              {selectedCluster && loadingEvents && (
-                <div className="text-sm text-gray-600">Loading history…</div>
-              )}
-              {selectedCluster && eventsError && (
-                <div className="text-sm text-red-700 bg-red-50 border border-red-200 px-3 py-2">
-                  {eventsError}
-                </div>
-              )}
-              {selectedCluster && !loadingEvents && !eventsError && events.length === 0 && (
-                <div className="text-sm text-gray-600">No history yet.</div>
-              )}
-              {selectedCluster &&
-                events.map((ev, idx) => {
-                  const isFirst = idx === 0;
-                  return (
-                    <div key={ev.id ?? `${ev.eventType}-${ev.eventTs}-${idx}`} className="flex items-start space-x-3">
-                      <div className="flex flex-col items-center">
-                        <div className={`w-3 h-3 rounded-full ${ev.eventType === "CREATED" ? "bg-gray-800" : "bg-gray-600"}`} />
-                        {!isFirst && <div className="w-0.5 h-full bg-gray-300 mt-1" />}
-                      </div>
-                      <div className="flex-1 pb-4">
-                        <div className="flex items-center justify-between mb-1">
-                          <span className="font-semibold text-gray-900">
-                            {ev.eventType === "CREATED" ? "Cluster Created" : "Cluster Updated"}
-                          </span>
-                          <span className="text-gray-500">{formatEventTs(ev.eventTs)}</span>
+              <div className="text-xs">
+                {!selectedCluster && (
+                  <div className="text-sm text-gray-600">Select a cluster to view wallets.</div>
+                )}
+                {selectedCluster && loadingWallets && (
+                  <div className="text-sm text-gray-600">Loading wallets…</div>
+                )}
+                {selectedCluster && walletsError && (
+                  <div className="text-sm text-red-700 bg-red-50 border border-red-200 px-3 py-2">
+                    {walletsError}
+                  </div>
+                )}
+                {selectedCluster && walletsRemoveError && (
+                  <div className="text-sm text-red-700 bg-red-50 border border-red-200 px-3 py-2 mb-2">
+                    {walletsRemoveError}
+                  </div>
+                )}
+                {selectedCluster && !loadingWallets && !walletsError && clusterWallets.length === 0 && (
+                  <div className="text-sm text-gray-600">No wallets linked yet. Add one in Manual Annotations.</div>
+                )}
+                {selectedCluster && !loadingWallets && !walletsError && clusterWallets.length > 0 && (
+                  <ul className="max-h-72 overflow-y-auto border border-gray-200 divide-y divide-gray-200">
+                    {clusterWallets.map((w) => (
+                      <li
+                        key={w.walletId ?? w.address}
+                        className="flex items-start gap-2 px-3 py-2 text-sm text-gray-900"
+                      >
+                        <span className="flex-1 min-w-0 font-mono break-all">{w.address}</span>
+                        <button
+                          type="button"
+                          onClick={() => onRemoveWallet(w.walletId)}
+                          disabled={removingWalletId != null}
+                          className="shrink-0 px-2 py-1 text-xs text-red-700 border border-red-200 hover:bg-red-50 disabled:opacity-50 disabled:cursor-not-allowed"
+                          title="Remove from cluster"
+                          aria-label={`Remove ${w.address} from cluster`}
+                        >
+                          {removingWalletId === w.walletId ? "…" : "Remove"}
+                        </button>
+                      </li>
+                    ))}
+                  </ul>
+                )}
+              </div>
+            </div>
+
+            <div className="bg-white border border-gray-300 p-5">
+              <h3 className="text-sm font-semibold text-gray-900 mb-4">
+                Cluster Change History
+              </h3>
+
+              <div className="space-y-4 text-xs">
+                {!selectedCluster && (
+                  <div className="text-sm text-gray-600">Select a cluster to view history.</div>
+                )}
+                {selectedCluster && loadingEvents && (
+                  <div className="text-sm text-gray-600">Loading history…</div>
+                )}
+                {selectedCluster && eventsError && (
+                  <div className="text-sm text-red-700 bg-red-50 border border-red-200 px-3 py-2">
+                    {eventsError}
+                  </div>
+                )}
+                {selectedCluster && !loadingEvents && !eventsError && events.length === 0 && (
+                  <div className="text-sm text-gray-600">No history yet.</div>
+                )}
+                {selectedCluster &&
+                  events.map((ev, idx) => {
+                    const isFirst = idx === 0;
+                    return (
+                      <div key={ev.id ?? `${ev.eventType}-${ev.eventTs}-${idx}`} className="flex items-start space-x-3">
+                        <div className="flex flex-col items-center">
+                          <div className={`w-3 h-3 rounded-full ${ev.eventType === "CREATED" ? "bg-gray-800" : "bg-gray-600"}`} />
+                          {!isFirst && <div className="w-0.5 h-full bg-gray-300 mt-1" />}
                         </div>
-                        <p className="text-gray-600">{ev.summary}</p>
-                        {ev.actor && (
-                          <span className="text-gray-500 mt-1 inline-block">by {ev.actor}</span>
-                        )}
+                        <div className="flex-1 pb-4">
+                          <div className="flex items-center justify-between mb-1">
+                            <span className="font-semibold text-gray-900">
+                              {ev.eventType === "CREATED" ? "Cluster Created" : "Cluster Updated"}
+                            </span>
+                            <span className="text-gray-500">{formatEventTs(ev.eventTs)}</span>
+                          </div>
+                          <p className="text-gray-600">{ev.summary}</p>
+                          {ev.actor && (
+                            <span className="text-gray-500 mt-1 inline-block">by {ev.actor}</span>
+                          )}
+                        </div>
                       </div>
-                    </div>
-                  );
-                })}
+                    );
+                  })}
+              </div>
             </div>
           </div>
         </main>
