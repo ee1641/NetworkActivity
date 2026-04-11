@@ -107,15 +107,6 @@ const Dashboard = () => {
               <div className="w-2 h-2 bg-gray-400 rounded-full" />
               <span className="hidden sm:inline">Auto-refresh: 30s</span>
             </div>
-
-
-            {/* Logout */}
-            <button
-              onClick={() => supabase.auth.signOut()}
-              className="text-sm text-gray-700 px-3 py-1.5 border border-gray-300 hover:bg-gray-100 transition-colors"
-            >
-              Sign Out
-            </button>
           </div>
         </div>
       </header>
