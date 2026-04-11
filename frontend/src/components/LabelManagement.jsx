@@ -366,13 +366,6 @@ const LabelManagement = () => {
             >
               <i className="fas fa-sync-alt" />
             </button>
-
-            <div className="flex items-center space-x-2">
-              <div className="w-8 h-8 bg-gray-300 rounded-full" />
-              <span className="text-sm text-gray-700 hidden md:block">
-                User Name
-              </span>
-            </div>
           </div>
         </div>
       </header>

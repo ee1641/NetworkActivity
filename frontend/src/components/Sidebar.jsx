@@ -134,13 +134,6 @@ const Sidebar = ({ isOpen = true, onToggle }) => {
           <span>Settings</span>
         </a>
       </nav>
-
-      <div className="px-4 py-4 border-t border-gray-300">
-        <div className="flex items-center space-x-3 px-3 py-2">
-          <i className="fas fa-question-circle text-gray-600" />
-          <span className="text-sm text-gray-700">Help &amp; Support</span>
-        </div>
-      </div>
     </aside>
   );
 };

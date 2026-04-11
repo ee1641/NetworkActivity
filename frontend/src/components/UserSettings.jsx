@@ -24,24 +24,6 @@ const UserSettings = () => {
               Blockchain Analytics
             </span>
           </div>
-
-          <div className="flex items-center space-x-3 md:space-x-6">
-            <div className="flex items-center space-x-2 text-xs text-gray-600">
-              <div className="w-2 h-2 bg-gray-400 rounded-full" />
-              <span className="hidden sm:inline">Auto-refresh: 30s</span>
-            </div>
-
-            <button className="w-8 h-8 flex items-center justify-center text-gray-600 hover:bg-gray-100">
-              <i className="fas fa-cog" />
-            </button>
-
-            <div className="flex items-center space-x-2">
-              <div className="w-8 h-8 bg-gray-300 rounded-full" />
-              <span className="text-sm text-gray-700 hidden md:block">
-                User Name
-              </span>
-            </div>
-          </div>
         </div>
       </header>
 
@@ -76,39 +58,8 @@ const UserSettings = () => {
                 <i className="fas fa-user mr-2" />
                 Account
               </button>
-              <button
-                onClick={() => setActiveTab("preferences")}
-                className={`tab-button px-6 py-3 text-sm font-medium border-r border-gray-300 ${
-                  activeTab === "preferences"
-                    ? "bg-gray-900 text-white"
-                    : "text-gray-700 hover:bg-gray-100"
-                }`}
-              >
-                <i className="fas fa-sliders-h mr-2" />
-                Preferences
-              </button>
-              <button
-                onClick={() => setActiveTab("security")}
-                className={`tab-button px-6 py-3 text-sm font-medium border-r border-gray-300 ${
-                  activeTab === "security"
-                    ? "bg-gray-900 text-white"
-                    : "text-gray-700 hover:bg-gray-100"
-                }`}
-              >
-                <i className="fas fa-shield-alt mr-2" />
-                Security
-              </button>
-              <button
-                onClick={() => setActiveTab("api")}
-                className={`tab-button px-6 py-3 text-sm font-medium ${
-                  activeTab === "api"
-                    ? "bg-gray-900 text-white"
-                    : "text-gray-700 hover:bg-gray-100"
-                }`}
-              >
-                <i className="fas fa-code mr-2" />
-                API Access
-              </button>
+              
+                
             </div>
 
             {/* Account Tab Content */}

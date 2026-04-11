@@ -131,11 +131,6 @@ const BlockchainExplorer = () => {
               Blockchain Explorer
             </h1>
           </div>
-          <div className="flex items-center space-x-4">
-            <button className="w-8 h-8 flex items-center justify-center text-gray-600 hover:bg-gray-100">
-              <i className="fas fa-cog" />
-            </button>
-          </div>
         </div>
       </header>
 

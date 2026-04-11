@@ -34,9 +34,6 @@ const AdminControlPanel = () => {
               <div className="w-2 h-2 bg-gray-400 rounded-full" />
               <span className="hidden sm:inline">System Status: Active</span>
             </div>
-            <button className="w-8 h-8 flex items-center justify-center text-gray-600 hover:bg-gray-100">
-              <i className="fas fa-cog" />
-            </button>
           </div>
         </div>
       </header>

@@ -107,19 +107,6 @@ const Dashboard = () => {
               <div className="w-2 h-2 bg-gray-400 rounded-full" />
               <span className="hidden sm:inline">Auto-refresh: 30s</span>
             </div>
-
-            {/* Settings */}
-            <button className="w-8 h-8 flex items-center justify-center text-gray-600 hover:bg-gray-100">
-              <i className="fas fa-cog" />
-            </button>
-
-            {/* Logout */}
-            <button
-              onClick={() => supabase.auth.signOut()}
-              className="text-sm text-gray-700 px-3 py-1.5 border border-gray-300 hover:bg-gray-100 transition-colors"
-            >
-              Sign Out
-            </button>
           </div>
         </div>
       </header>
@@ -424,13 +411,6 @@ const Dashboard = () => {
                     </div>
                   ))
                 )}
-
-                <button
-                  onClick={() => navigate("/explorer")}
-                  className="w-full text-xs text-gray-700 py-2 border border-gray-300 hover:bg-gray-50"
-                >
-                  View All Activity
-                </button>
               </div>
             </div>
 
