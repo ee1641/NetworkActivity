@@ -10,6 +10,8 @@ export default function LoginPage() {
     const [loading, setLoading] = useState(false);
     const [error, setError] = useState(null);
     const [message, setMessage] = useState(null);
+    const [loginPasswordVisible, setLoginPasswordVisible] = useState(false);
+    const [registerPasswordVisible, setRegisterPasswordVisible] = useState(false);
 
     useEffect(() => {
         // Check if user is already logged in
@@ -133,14 +135,22 @@ export default function LoginPage() {
                                 <label className="block text-sm font-semibold text-gray-900 mb-2">Password</label>
                                 <div className="relative">
                                     <input
-                                        type="password"
+                                        type={loginPasswordVisible ? "text" : "password"}
                                         value={password}
                                         onChange={(e) => setPassword(e.target.value)}
                                         placeholder="Enter your password"
                                         required
-                                        className="w-full px-4 py-3 border-2 border-gray-200 rounded-lg bg-white text-gray-900 text-sm focus:outline-none focus:border-gray-900 focus:ring-0 transition-colors"
+                                        autoComplete="current-password"
+                                        className="w-full px-4 py-3 pr-12 border-2 border-gray-200 rounded-lg bg-white text-gray-900 text-sm focus:outline-none focus:border-gray-900 focus:ring-0 transition-colors"
                                     />
-                                    <i className="fas fa-lock absolute right-4 top-1/2 -translate-y-1/2 text-gray-400"></i>
+                                    <button
+                                        type="button"
+                                        onClick={() => setLoginPasswordVisible((v) => !v)}
+                                        className="absolute right-3 top-1/2 -translate-y-1/2 p-1 text-gray-500 hover:text-gray-800 focus:outline-none focus-visible:ring-2 focus-visible:ring-gray-900 focus-visible:ring-offset-2 rounded"
+                                        aria-label={loginPasswordVisible ? "Hide password" : "Show password"}
+                                    >
+                                        <i className={`fas ${loginPasswordVisible ? "fa-eye-slash" : "fa-eye"} text-base`} aria-hidden />
+                                    </button>
                                 </div>
                             </div>
                             <div className="flex items-center justify-between">
@@ -182,15 +192,23 @@ export default function LoginPage() {
                                 <label className="block text-sm font-semibold text-gray-900 mb-2">Password</label>
                                 <div className="relative">
                                     <input
-                                        type="password"
+                                        type={registerPasswordVisible ? "text" : "password"}
                                         value={password}
                                         onChange={(e) => setPassword(e.target.value)}
                                         placeholder="Create a password"
                                         required
                                         minLength={6}
-                                        className="w-full px-4 py-3 border-2 border-gray-200 rounded-lg bg-white text-gray-900 text-sm focus:outline-none focus:border-gray-900 focus:ring-0 transition-colors"
+                                        autoComplete="new-password"
+                                        className="w-full px-4 py-3 pr-12 border-2 border-gray-200 rounded-lg bg-white text-gray-900 text-sm focus:outline-none focus:border-gray-900 focus:ring-0 transition-colors"
                                     />
-                                    <i className="fas fa-lock absolute right-4 top-1/2 -translate-y-1/2 text-gray-400"></i>
+                                    <button
+                                        type="button"
+                                        onClick={() => setRegisterPasswordVisible((v) => !v)}
+                                        className="absolute right-3 top-1/2 -translate-y-1/2 p-1 text-gray-500 hover:text-gray-800 focus:outline-none focus-visible:ring-2 focus-visible:ring-gray-900 focus-visible:ring-offset-2 rounded"
+                                        aria-label={registerPasswordVisible ? "Hide password" : "Show password"}
+                                    >
+                                        <i className={`fas ${registerPasswordVisible ? "fa-eye-slash" : "fa-eye"} text-base`} aria-hidden />
+                                    </button>
                                 </div>
                             </div>
                             <button
