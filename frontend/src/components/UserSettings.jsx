@@ -17,6 +17,9 @@ const UserSettings = () => {
   const [passwordSaving, setPasswordSaving] = useState(false);
   const [passwordError, setPasswordError] = useState(null);
   const [passwordSuccess, setPasswordSuccess] = useState(null);
+  const [currentPasswordVisible, setCurrentPasswordVisible] = useState(false);
+  const [newPasswordVisible, setNewPasswordVisible] = useState(false);
+  const [confirmPasswordVisible, setConfirmPasswordVisible] = useState(false);
 
   useEffect(() => {
     const syncUser = (session) => {
@@ -49,6 +52,9 @@ const UserSettings = () => {
     setConfirmNewPassword("");
     setPasswordError(null);
     setPasswordSuccess(null);
+    setCurrentPasswordVisible(false);
+    setNewPasswordVisible(false);
+    setConfirmPasswordVisible(false);
   };
 
   const onUpdatePassword = async (e) => {
@@ -95,6 +101,9 @@ const UserSettings = () => {
       setCurrentPassword("");
       setNewPassword("");
       setConfirmNewPassword("");
+      setCurrentPasswordVisible(false);
+      setNewPasswordVisible(false);
+      setConfirmPasswordVisible(false);
     } catch (err) {
       setPasswordError(err?.message ?? "Could not update password.");
     } finally {
@@ -226,46 +235,79 @@ const UserSettings = () => {
                         <label className="block text-sm text-gray-700 mb-2" htmlFor="settings-current-password">
                           Current Password
                         </label>
-                        <input
-                          id="settings-current-password"
-                          type="password"
-                          autoComplete="current-password"
-                          value={currentPassword}
-                          onChange={(e) => setCurrentPassword(e.target.value)}
-                          placeholder="Enter current password"
-                          disabled={passwordSaving || passwordChangeDisabled}
-                          className="w-full px-4 py-2 border border-gray-300 text-gray-900 text-sm focus:outline-none focus:border-gray-900 disabled:bg-gray-100 disabled:text-gray-500"
-                        />
+                        <div className="relative">
+                          <input
+                            id="settings-current-password"
+                            type={currentPasswordVisible ? "text" : "password"}
+                            autoComplete="current-password"
+                            value={currentPassword}
+                            onChange={(e) => setCurrentPassword(e.target.value)}
+                            placeholder="Enter current password"
+                            disabled={passwordSaving || passwordChangeDisabled}
+                            className="w-full px-4 py-2 pr-10 border border-gray-300 text-gray-900 text-sm focus:outline-none focus:border-gray-900 disabled:bg-gray-100 disabled:text-gray-500"
+                          />
+                          <button
+                            type="button"
+                            onClick={() => setCurrentPasswordVisible((v) => !v)}
+                            disabled={passwordSaving || passwordChangeDisabled}
+                            className="absolute right-2 top-1/2 -translate-y-1/2 p-1 text-gray-500 hover:text-gray-800 focus:outline-none focus-visible:ring-2 focus-visible:ring-gray-900 focus-visible:ring-offset-1 rounded disabled:opacity-40 disabled:pointer-events-none"
+                            aria-label={currentPasswordVisible ? "Hide current password" : "Show current password"}
+                          >
+                            <i className={`fas ${currentPasswordVisible ? "fa-eye-slash" : "fa-eye"} text-sm`} aria-hidden />
+                          </button>
+                        </div>
                       </div>
                       <div>
                         <label className="block text-sm text-gray-700 mb-2" htmlFor="settings-new-password">
                           New Password
                         </label>
-                        <input
-                          id="settings-new-password"
-                          type="password"
-                          autoComplete="new-password"
-                          value={newPassword}
-                          onChange={(e) => setNewPassword(e.target.value)}
-                          placeholder="Enter new password"
-                          disabled={passwordSaving || passwordChangeDisabled}
-                          className="w-full px-4 py-2 border border-gray-300 text-gray-900 text-sm focus:outline-none focus:border-gray-900 disabled:bg-gray-100 disabled:text-gray-500"
-                        />
+                        <div className="relative">
+                          <input
+                            id="settings-new-password"
+                            type={newPasswordVisible ? "text" : "password"}
+                            autoComplete="new-password"
+                            value={newPassword}
+                            onChange={(e) => setNewPassword(e.target.value)}
+                            placeholder="Enter new password"
+                            disabled={passwordSaving || passwordChangeDisabled}
+                            className="w-full px-4 py-2 pr-10 border border-gray-300 text-gray-900 text-sm focus:outline-none focus:border-gray-900 disabled:bg-gray-100 disabled:text-gray-500"
+                          />
+                          <button
+                            type="button"
+                            onClick={() => setNewPasswordVisible((v) => !v)}
+                            disabled={passwordSaving || passwordChangeDisabled}
+                            className="absolute right-2 top-1/2 -translate-y-1/2 p-1 text-gray-500 hover:text-gray-800 focus:outline-none focus-visible:ring-2 focus-visible:ring-gray-900 focus-visible:ring-offset-1 rounded disabled:opacity-40 disabled:pointer-events-none"
+                            aria-label={newPasswordVisible ? "Hide new password" : "Show new password"}
+                          >
+                            <i className={`fas ${newPasswordVisible ? "fa-eye-slash" : "fa-eye"} text-sm`} aria-hidden />
+                          </button>
+                        </div>
                       </div>
                       <div>
                         <label className="block text-sm text-gray-700 mb-2" htmlFor="settings-confirm-password">
                           Confirm New Password
                         </label>
-                        <input
-                          id="settings-confirm-password"
-                          type="password"
-                          autoComplete="new-password"
-                          value={confirmNewPassword}
-                          onChange={(e) => setConfirmNewPassword(e.target.value)}
-                          placeholder="Confirm new password"
-                          disabled={passwordSaving || passwordChangeDisabled}
-                          className="w-full px-4 py-2 border border-gray-300 text-gray-900 text-sm focus:outline-none focus:border-gray-900 disabled:bg-gray-100 disabled:text-gray-500"
-                        />
+                        <div className="relative">
+                          <input
+                            id="settings-confirm-password"
+                            type={confirmPasswordVisible ? "text" : "password"}
+                            autoComplete="new-password"
+                            value={confirmNewPassword}
+                            onChange={(e) => setConfirmNewPassword(e.target.value)}
+                            placeholder="Confirm new password"
+                            disabled={passwordSaving || passwordChangeDisabled}
+                            className="w-full px-4 py-2 pr-10 border border-gray-300 text-gray-900 text-sm focus:outline-none focus:border-gray-900 disabled:bg-gray-100 disabled:text-gray-500"
+                          />
+                          <button
+                            type="button"
+                            onClick={() => setConfirmPasswordVisible((v) => !v)}
+                            disabled={passwordSaving || passwordChangeDisabled}
+                            className="absolute right-2 top-1/2 -translate-y-1/2 p-1 text-gray-500 hover:text-gray-800 focus:outline-none focus-visible:ring-2 focus-visible:ring-gray-900 focus-visible:ring-offset-1 rounded disabled:opacity-40 disabled:pointer-events-none"
+                            aria-label={confirmPasswordVisible ? "Hide confirm password" : "Show confirm password"}
+                          >
+                            <i className={`fas ${confirmPasswordVisible ? "fa-eye-slash" : "fa-eye"} text-sm`} aria-hidden />
+                          </button>
+                        </div>
                       </div>
                     </div>
 
