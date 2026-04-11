@@ -246,21 +246,14 @@ export default function LoginPage() {
                                 </div>
                             </div>
 
-                            <div className="grid grid-cols-2 gap-4 mt-6">
+                            <div className="mt-6">
                                 <button
                                     type="button"
                                     onClick={handleGoogleLogin}
-                                    className="flex items-center justify-center space-x-2 px-4 py-3 border-2 border-gray-200 rounded-lg bg-white hover:bg-gray-50 transition-colors text-gray-700 hover:border-gray-300"
+                                    className="w-full flex items-center justify-center space-x-2 px-4 py-3 border-2 border-gray-200 rounded-lg bg-white hover:bg-gray-50 transition-colors text-gray-700 hover:border-gray-300"
                                 >
                                     <i className="fab fa-google text-lg"></i>
                                     <span className="text-sm font-semibold">Google</span>
-                                </button>
-                                <button
-                                    type="button"
-                                    className="flex items-center justify-center space-x-2 px-4 py-3 border-2 border-gray-200 rounded-lg bg-white hover:bg-gray-50 transition-colors text-gray-700 hover:border-gray-300"
-                                >
-                                    <i className="fab fa-github text-lg"></i>
-                                    <span className="text-sm font-semibold">GitHub</span>
                                 </button>
                             </div>
 

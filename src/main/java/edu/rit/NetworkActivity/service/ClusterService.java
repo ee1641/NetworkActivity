@@ -146,6 +146,23 @@ public class ClusterService {
         return toDto(savedTarget);
     }
 
+    public boolean delete(Long clusterId) {
+        if (clusterId == null) return false;
+        Optional<Cluster> maybe = clusterRepository.findById(clusterId);
+        if (maybe.isEmpty()) return false;
+
+        clusterRepository.deleteById(clusterId);
+        auditLogRepository.save(buildAuditLog(
+                null,
+                "CLUSTER_DELETED",
+                clusterEntityAffected(clusterId),
+                OffsetDateTime.now(),
+                toAuditValue(maybe.get()),
+                null
+        ));
+        return true;
+    }
+
     private ClusterDto toDto(Cluster cluster) {
         return ClusterDto.builder()
                 .clusterId(cluster.getClusterId())
