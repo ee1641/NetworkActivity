@@ -5,6 +5,7 @@ import { useSidebarToggle } from "../hooks/useSidebarToggle";
 import {
   createCluster,
   addWalletToCluster,
+  deleteCluster,
   fetchClusterEvents,
   fetchClusters,
   mergeClusters,
@@ -48,6 +49,10 @@ const WalletClusteringAnalysis = () => {
   const [addingWallet, setAddingWallet] = useState(false);
   const [addWalletError, setAddWalletError] = useState(null);
   const [addWalletSuccess, setAddWalletSuccess] = useState(null);
+
+  const [isDeleteOpen, setIsDeleteOpen] = useState(false);
+  const [deleting, setDeleting] = useState(false);
+  const [deleteError, setDeleteError] = useState(null);
 
   const selectedCluster = useMemo(() => {
     if (selectedClusterId == null) return null;
@@ -295,6 +300,35 @@ const WalletClusteringAnalysis = () => {
       setAddWalletError(e?.message || "Failed to add wallet");
     } finally {
       setAddingWallet(false);
+    }
+  };
+
+  const openDelete = () => {
+    setDeleteError(null);
+    setIsDeleteOpen(true);
+  };
+
+  const onConfirmDelete = async () => {
+    if (!selectedCluster) return;
+    setDeleting(true);
+    setDeleteError(null);
+    try {
+      await deleteCluster(selectedCluster.clusterId);
+      const refreshed = await fetchClusters({
+        search: search?.trim() || undefined,
+        sortBy: uiSortKeyToApi(sortBy),
+      });
+      const nextClusters = Array.isArray(refreshed) ? refreshed : [];
+      setClusters(nextClusters);
+
+      const nextSelected =
+        nextClusters.length > 0 ? nextClusters[0].clusterId : null;
+      setSelectedClusterId(nextSelected);
+      setIsDeleteOpen(false);
+    } catch (e) {
+      setDeleteError(e?.message || "Failed to delete cluster");
+    } finally {
+      setDeleting(false);
     }
   };
 
@@ -553,6 +587,55 @@ const WalletClusteringAnalysis = () => {
         </div>
       )}
 
+      {isDeleteOpen && (
+        <div className="fixed inset-0 bg-black/40 flex items-center justify-center p-4 z-50">
+          <div className="bg-white border border-gray-300 w-full max-w-lg p-5">
+            <div className="flex items-start justify-between mb-4">
+              <h3 className="text-sm font-semibold text-gray-900">Delete Cluster</h3>
+              <button
+                className="text-gray-600 hover:text-gray-900"
+                onClick={() => setIsDeleteOpen(false)}
+                disabled={deleting}
+                aria-label="Close"
+              >
+                <i className="fas fa-times" />
+              </button>
+            </div>
+
+            <div className="text-sm text-gray-700 mb-3">
+              This will permanently delete{" "}
+              <span className="font-semibold">
+                {selectedCluster?.name || `Cluster #${selectedCluster?.clusterId}`}
+              </span>{" "}
+              and its wallet links.
+            </div>
+
+            {deleteError && (
+              <div className="text-sm text-red-700 bg-red-50 border border-red-200 px-3 py-2 mb-3">
+                {deleteError}
+              </div>
+            )}
+
+            <div className="flex gap-2 pt-2">
+              <button
+                className="flex-1 px-4 py-2 bg-red-700 text-white text-sm hover:bg-red-800 disabled:opacity-50"
+                onClick={onConfirmDelete}
+                disabled={deleting || !selectedCluster}
+              >
+                {deleting ? "Deleting…" : "Delete"}
+              </button>
+              <button
+                className="px-4 py-2 bg-white border border-gray-300 text-sm text-gray-700 hover:bg-gray-50 disabled:opacity-50"
+                onClick={() => setIsDeleteOpen(false)}
+                disabled={deleting}
+              >
+                Cancel
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
       {/* Main Content Area */}
       <div className="flex flex-col lg:flex-row flex-1">
         {/* Left Panel - Cluster List */}
@@ -689,6 +772,14 @@ const WalletClusteringAnalysis = () => {
                 >
                   <i className="fas fa-download mr-2" />
                   Export
+                </button>
+                <button
+                  className="px-3 py-2 bg-white border border-red-300 text-sm text-red-700 hover:bg-red-50 disabled:opacity-50"
+                  onClick={openDelete}
+                  disabled={!selectedCluster}
+                >
+                  <i className="fas fa-trash mr-2" />
+                  Delete
                 </button>
               </div>
             </div>

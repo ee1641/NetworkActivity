@@ -77,5 +77,13 @@ public class ClusterController {
             return ResponseEntity.badRequest().build();
         }
     }
+
+    @DeleteMapping("/{id}")
+    public ResponseEntity<Void> delete(@PathVariable Long id) {
+        if (clusterService.get(id) == null) return ResponseEntity.notFound().build();
+        clusterWalletService.deleteAllWalletLinksForCluster(id);
+        boolean ok = clusterService.delete(id);
+        return ok ? ResponseEntity.noContent().build() : ResponseEntity.notFound().build();
+    }
 }
 

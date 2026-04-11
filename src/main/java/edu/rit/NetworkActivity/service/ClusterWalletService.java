@@ -83,5 +83,16 @@ public class ClusterWalletService {
         log.setNewValue("addressId=" + address.getId() + ";address=" + address.getAddress());
         auditLogRepository.save(log);
     }
+
+    @Transactional
+    public void deleteAllWalletLinksForCluster(Long clusterId) {
+        if (clusterId == null) return;
+        entityManager.createNativeQuery("""
+                        delete from cluster_wallets
+                        where cluster_id = :clusterId
+                        """)
+                .setParameter("clusterId", clusterId)
+                .executeUpdate();
+    }
 }
 

@@ -253,7 +253,7 @@ const Dashboard = () => {
               </div>
             </div>
 
-            {/* Active Cluster Statistics Widget */}
+            {/* Active Hotspots (receiver-address activity proxy; not wallet-cluster entities) */}
             <div className="bg-white border border-gray-300 p-5 relative group">
               <div className="absolute top-2 right-2 opacity-0 group-hover:opacity-100 transition-opacity">
                 <i className="fas fa-grip-vertical text-gray-400" />
@@ -261,22 +261,18 @@ const Dashboard = () => {
 
               <div className="flex items-center justify-between mb-4">
                 <h3 className="text-sm font-semibold text-gray-900">
-                  Active Clusters
+                  Active Hotspots
                 </h3>
                 <i className="fas fa-ellipsis-v text-gray-400" />
               </div>
 
-              {/* 
-                COLLABORATIVE NOTE: 
-                The cluster counts below are currently derived from "Hotspots" (active addresses) as a simplified proxy.
-                Team members responsible for Clustering Algorithms may replace this with results from ClusterRepository.
-              */}
+              {/* Counts = distinct receiver addresses in range, bucketed by tx count (see FlowService.getClusterStatistics). */}
               <div className="text-center py-4">
                 <div className="text-4xl font-bold text-gray-900 mb-2">
                   {clusterStats?.totalClusters || 0}
                 </div>
                 <div className="text-xs text-gray-600 mb-4">
-                  Total Active Clusters
+                  Total Active Hotspots
                 </div>
 
                 <div className="space-y-2">
