@@ -461,14 +461,7 @@ const Dashboard = () => {
             </div>
           </div>
 
-          {/* Customization Helper Text */}
-          <div className="mt-6 p-4 bg-gray-100 border border-gray-300 text-center">
-            <p className="text-xs text-gray-600">
-              <i className="fas fa-info-circle mr-2" />
-              Hover over widgets to see drag handles. Drag and drop to customize
-              your dashboard layout.
-            </p>
-          </div>
+          
         </main>
       </div>
     </div>
