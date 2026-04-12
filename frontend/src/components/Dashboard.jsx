@@ -1,4 +1,5 @@
-import React, { useState, useEffect, useCallback } from "react";
+import React, { useState, useEffect, useCallback, useRef } from "react";
+import { Chart } from "chart.js/auto";
 import { useNavigate } from "react-router-dom";
 import Sidebar from "./Sidebar";
 import SidebarToggleButton from "./SidebarToggleButton";
@@ -30,6 +31,8 @@ const Dashboard = () => {
   const [loading, setLoading] = useState(true);
   const [dateRange, setDateRange] = useState("24h");
   const [volumeRange, setVolumeRange] = useState("24h");
+  const chartRef = useRef(null);
+  const chartInstanceRef = useRef(null);
 
   const fetchDashboardData = useCallback(async (range) => {
     try {
@@ -74,6 +77,78 @@ const Dashboard = () => {
       console.error("Volume fetch error:", err);
     }
   };
+
+  useEffect(() => {
+    if (!chartRef.current) return;
+    if (chartInstanceRef.current) chartInstanceRef.current.destroy();
+
+    const labels = volumeData.map((d) => {
+      const date = new Date(d.ts);
+      return date.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" });
+    });
+    const counts = volumeData.map((d) => d.count);
+
+    chartInstanceRef.current = new Chart(chartRef.current.getContext("2d"), {
+      type: "bar",
+      data: {
+        labels: labels,
+        datasets: [
+          {
+            label: "Transactions",
+            data: counts,
+            backgroundColor: "#4b5563", // gray-600
+            hoverBackgroundColor: "#1f2937", // gray-800
+            borderRadius: 4,
+          },
+        ],
+      },
+      options: {
+        responsive: true,
+        maintainAspectRatio: false,
+        plugins: {
+          legend: { display: false },
+          tooltip: {
+            callbacks: {
+              title: (items) => `Time: ${items[0].label}`,
+              label: (item) => `Transactions: ${item.raw}`,
+            },
+          },
+        },
+        scales: {
+          x: {
+            grid: { display: false },
+            ticks: {
+              maxRotation: 0,
+              autoSkip: true,
+              maxTicksLimit: 12,
+              font: { size: 10 },
+            },
+            title: {
+              display: true,
+              text: "Time (UTC)",
+              font: { size: 12, weight: "bold" },
+            },
+          },
+          y: {
+            beginAtZero: true,
+            ticks: {
+              precision: 0,
+              font: { size: 10 },
+            },
+            title: {
+              display: true,
+              text: "Tx Count",
+              font: { size: 12, weight: "bold" },
+            },
+          },
+        },
+      },
+    });
+
+    return () => {
+      if (chartInstanceRef.current) chartInstanceRef.current.destroy();
+    };
+  }, [volumeData]);
 
   if (loading) {
     return (
@@ -222,25 +297,16 @@ const Dashboard = () => {
                 </div>
               </div>
 
-              <div className="h-64 bg-gray-100 border border-gray-300 flex items-center justify-center overflow-hidden">
-                <div className="w-full h-full flex items-end justify-around px-4 pb-4">
-                  {volumeData.length === 0 ? (
+              <div className="h-64 bg-gray-50 border border-gray-300 relative">
+                {volumeData.length === 0 ? (
+                  <div className="absolute inset-0 flex items-center justify-center">
                     <span className="text-xs text-gray-400">
                       Waiting for sync...
                     </span>
-                  ) : (
-                    volumeData.map((d, i) => (
-                      <div
-                        key={i}
-                        className="w-8 bg-gray-500 hover:bg-gray-700 transition-all cursor-crosshair"
-                        style={{
-                          height: `${Math.min(100, (d.count / Math.max(...volumeData.map((v) => v.count), 1)) * 100)}%`,
-                        }}
-                        title={`${d.ts}: ${d.count} txs`}
-                      />
-                    ))
-                  )}
-                </div>
+                  </div>
+                ) : (
+                  <canvas ref={chartRef} />
+                )}
               </div>
             </div>
 
