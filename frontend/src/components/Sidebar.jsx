@@ -89,17 +89,7 @@ const Sidebar = ({ isOpen = true, onToggle }) => {
           <i className="fas fa-tags w-5" />
           <span>Labels</span>
         </a>
-        <a
-          href="/admin"
-          className={`flex items-center space-x-3 px-3 py-2 ${
-            isActive("/admin")
-              ? "bg-gray-900 text-white"
-              : "text-gray-700 hover:bg-gray-100"
-          }`}
-        >
-          <i className="fas fa-shield-alt w-5" />
-          <span>Admin Panel</span>
-        </a>
+        
         <a
           href="/transaction-flow"
           className={`flex items-center space-x-3 px-3 py-2 ${
